@@ -1,0 +1,23 @@
+{
+  "name": "ews-hpt-backend",
+  "version": "1.0.0",
+  "description": "EWS HPT backend API - REST API + SQLite, single source of truth for dashboard & mobile apps",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "seed": "node src/db/seed.js",
+    "dev": "node src/index.js",
+    "backup": "node scripts/backup.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^9.0.1",
+    "xlsx": "^0.18.5"
+  }
+}
