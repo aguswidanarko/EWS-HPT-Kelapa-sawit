@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "EWS HPT Mobile",
+    "slug": "ews-hpt-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Kamera digunakan untuk memotret bukti lapangan (deteksi, sensus, pengendalian, mortalitas).",
+        "NSLocationWhenInUseUsageDescription": "Lokasi GPS dicatat sesaat saat menyimpan data lapangan untuk keperluan georeferensi (bukan pelacakan berkelanjutan).",
+        "NSPhotoLibraryUsageDescription": "Galeri digunakan sebagai alternatif untuk melampirkan foto bukti lapangan."
+      }
+    },
+    "android": {
+      "package": "com.ewshpt.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Lokasi GPS dicatat sesaat saat menyimpan data lapangan untuk keperluan georeferensi (bukan pelacakan berkelanjutan)."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Kamera digunakan untuk memotret bukti lapangan (deteksi, sensus, pengendalian, mortalitas).",
+          "photosPermission": "Galeri digunakan sebagai alternatif untuk melampirkan foto bukti lapangan."
+        }
+      ]
+    ]
+  }
+}
