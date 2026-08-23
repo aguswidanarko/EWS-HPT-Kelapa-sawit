@@ -19,6 +19,12 @@ const KIND_FILTERS: { label: string; value: RiwayatItem['kind'] | null }[] = [
   { label: 'Sensus', value: 'SENSUS' },
   { label: 'Pengendalian', value: 'TREATMENT' },
   { label: 'Mortalitas', value: 'MORTALITAS' },
+  { label: 'Partenocarpi', value: 'PARTENOCARPI' },
+  { label: 'Water Mgmt', value: 'WATER_MANAGEMENT' },
+  { label: 'Bahan Organik', value: 'BAHAN_ORGANIK' },
+  { label: 'TBM Vegetatif', value: 'TBM_VEGETATIF' },
+  { label: 'Defisiensi Hara', value: 'DEFISIENSI_HARA' },
+  { label: 'Action Plan', value: 'ACTION_PLAN' },
 ];
 
 const SYNC_META: Record<string, { emoji: string; label: string; color: string }> = {
@@ -55,11 +61,29 @@ export default function RiwayatScreen({ navigation }: Props) {
     });
   }, [items, kindFilter, onlyPending]);
 
-  const kindToRoute = (kind: RiwayatItem['kind']): 'deteksi' | 'sensus' | 'treatment' | 'mortalitas' => {
-    if (kind === 'DETEKSI') return 'deteksi';
-    if (kind === 'SENSUS') return 'sensus';
-    if (kind === 'TREATMENT') return 'treatment';
-    return 'mortalitas';
+  const kindToRoute = (kind: RiwayatItem['kind']): RootStackParamList['RiwayatDetail']['kind'] => {
+    switch (kind) {
+      case 'DETEKSI':
+        return 'deteksi';
+      case 'SENSUS':
+        return 'sensus';
+      case 'TREATMENT':
+        return 'treatment';
+      case 'PARTENOCARPI':
+        return 'partenocarpi';
+      case 'WATER_MANAGEMENT':
+        return 'water_management';
+      case 'BAHAN_ORGANIK':
+        return 'bahan_organik';
+      case 'TBM_VEGETATIF':
+        return 'tbm_vegetatif';
+      case 'DEFISIENSI_HARA':
+        return 'defisiensi_hara';
+      case 'ACTION_PLAN':
+        return 'action_plan';
+      default:
+        return 'mortalitas';
+    }
   };
 
   return (

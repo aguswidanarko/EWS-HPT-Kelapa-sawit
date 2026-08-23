@@ -80,8 +80,22 @@ export interface UploadPhotoParams {
   fileUri: string;
   fileName: string;
   mimeType: string;
-  entity_type: 'DETECTION' | 'SENSUS' | 'TREATMENT' | 'MORTALITY';
-  entity_id: number; // server-side numeric id (only upload once the parent record has synced)
+  entity_type:
+    | 'DETECTION'
+    | 'SENSUS'
+    | 'TREATMENT'
+    | 'MORTALITY'
+    | 'YIELD_PARTENOCARPI'
+    | 'WATER_MANAGEMENT'
+    | 'BAHAN_ORGANIK'
+    | 'TBM_VEGETATIF'
+    | 'DEFISIENSI_HARA_TEMUAN'
+    | 'ACTION_PLAN';
+  /** V1 kinds: server-side numeric id (only upload once the parent record has synced). V2 kinds
+   * upload the photo BEFORE their parent record exists server-side (see sync/engine.ts
+   * ensurePhotoUploaded), so this is null there - the photo row's entity_id column just stays
+   * unset, which is fine since V2 create payloads carry the photo's id directly, not the reverse. */
+  entity_id: number | null;
   gps_lat?: number | null;
   gps_lng?: number | null;
   timestamp?: string;
@@ -92,7 +106,7 @@ export async function uploadPhoto(params: UploadPhotoParams): Promise<{ id: numb
   // React Native's FormData accepts this {uri,name,type} shape for file fields.
   form.append('file', { uri: params.fileUri, name: params.fileName, type: params.mimeType } as unknown as Blob);
   form.append('entity_type', params.entity_type);
-  form.append('entity_id', String(params.entity_id));
+  if (params.entity_id !== null) form.append('entity_id', String(params.entity_id));
   if (params.gps_lat !== undefined && params.gps_lat !== null) form.append('gps_lat', String(params.gps_lat));
   if (params.gps_lng !== undefined && params.gps_lng !== null) form.append('gps_lng', String(params.gps_lng));
   if (params.timestamp) form.append('timestamp', params.timestamp);

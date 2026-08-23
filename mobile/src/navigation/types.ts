@@ -19,8 +19,29 @@ export type RootStackParamList = {
   SensusGanoderma: undefined;
   Pengendalian: undefined;
   Mortalitas: undefined;
+  YieldMakingMenu: undefined;
+  Partenocarpi: undefined;
+  WaterManagement: undefined;
+  BahanOrganik: undefined;
+  TbmVegetatif: undefined;
+  DefisiensiHara: undefined;
+  ActionPlan: undefined;
+  ActionPlanDetail: { id: number };
   PanduanDetail: { id: number };
-  RiwayatDetail: { kind: 'deteksi' | 'sensus' | 'treatment' | 'mortalitas'; localId: string };
+  RiwayatDetail: {
+    kind:
+      | 'deteksi'
+      | 'sensus'
+      | 'treatment'
+      | 'mortalitas'
+      | 'partenocarpi'
+      | 'water_management'
+      | 'bahan_organik'
+      | 'tbm_vegetatif'
+      | 'defisiensi_hara'
+      | 'action_plan';
+    localId: string;
+  };
 };
 
 declare global {

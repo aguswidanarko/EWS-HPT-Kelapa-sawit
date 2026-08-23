@@ -13,6 +13,14 @@ import SensusRayapScreen from '../screens/sensus/SensusRayapScreen';
 import SensusGanodermaScreen from '../screens/sensus/SensusGanodermaScreen';
 import PengendalianFormScreen from '../screens/PengendalianFormScreen';
 import MortalitasFormScreen from '../screens/MortalitasFormScreen';
+import YieldMakingMenuScreen from '../screens/YieldMakingMenuScreen';
+import PartenocarpiFormScreen from '../screens/yield/PartenocarpiFormScreen';
+import WaterManagementFormScreen from '../screens/yield/WaterManagementFormScreen';
+import BahanOrganikFormScreen from '../screens/yield/BahanOrganikFormScreen';
+import TbmVegetatifFormScreen from '../screens/yield/TbmVegetatifFormScreen';
+import DefisiensiHaraScreen from '../screens/DefisiensiHaraScreen';
+import ActionPlanScreen from '../screens/ActionPlanScreen';
+import ActionPlanDetailScreen from '../screens/ActionPlanDetailScreen';
 import PanduanDetailScreen from '../screens/PanduanDetailScreen';
 import RiwayatDetailScreen from '../screens/RiwayatDetailScreen';
 import { useAuth } from '../state/AuthContext';
@@ -49,6 +57,14 @@ export default function RootNavigator() {
             <Stack.Screen name="SensusGanoderma" component={SensusGanodermaScreen} options={{ title: 'Sensus Ganoderma' }} />
             <Stack.Screen name="Pengendalian" component={PengendalianFormScreen} options={{ title: 'Pengendalian' }} />
             <Stack.Screen name="Mortalitas" component={MortalitasFormScreen} options={{ title: 'Sensus Mortalitas' }} />
+            <Stack.Screen name="YieldMakingMenu" component={YieldMakingMenuScreen} options={{ title: 'Yield Making' }} />
+            <Stack.Screen name="Partenocarpi" component={PartenocarpiFormScreen} options={{ title: 'Partenocarpi' }} />
+            <Stack.Screen name="WaterManagement" component={WaterManagementFormScreen} options={{ title: 'Water Management' }} />
+            <Stack.Screen name="BahanOrganik" component={BahanOrganikFormScreen} options={{ title: 'Bahan Organik' }} />
+            <Stack.Screen name="TbmVegetatif" component={TbmVegetatifFormScreen} options={{ title: 'TBM Vegetatif' }} />
+            <Stack.Screen name="DefisiensiHara" component={DefisiensiHaraScreen} options={{ title: 'Defisiensi Hara' }} />
+            <Stack.Screen name="ActionPlan" component={ActionPlanScreen} options={{ title: 'Action Plan' }} />
+            <Stack.Screen name="ActionPlanDetail" component={ActionPlanDetailScreen} options={{ title: 'Update Action Plan' }} />
             <Stack.Screen name="PanduanDetail" component={PanduanDetailScreen} options={{ title: 'Panduan' }} />
             <Stack.Screen name="RiwayatDetail" component={RiwayatDetailScreen} options={{ title: 'Detail Riwayat' }} />
           </>

@@ -1,5 +1,5 @@
 import { getDb, withTransaction } from '../database';
-import type { Afdeling, Blok, Estate, Hpt, Species, ThresholdRow, ScheduleItem, CachedIncident } from '../../types';
+import type { Afdeling, Blok, Estate, Hpt, Species, ThresholdRow, ScheduleItem, CachedIncident, SamplingRuleRow } from '../../types';
 import type { MasterDownload } from '../../api/sync';
 
 // ---------------------------------------------------------------- master (estate/afdeling/blok/hpt/species)
@@ -215,6 +215,27 @@ export async function saveCachedIncidents(rows: CachedIncident[]): Promise<void>
       );
     }
   });
+}
+
+// ---------------------------------------------------------------- sampling_rule (SPEC_V2.md
+// section 4 Mobile "Sampling Assistant: generalize supaya baca sampling_rule")
+export async function saveSamplingRules(rows: SamplingRuleRow[]): Promise<void> {
+  await withTransaction(async (db) => {
+    await db.runAsync('DELETE FROM sampling_rules');
+    for (const r of rows) {
+      await db.runAsync(
+        `INSERT INTO sampling_rules (id, hpt_id, method, row_start, row_interval, plant_start, plant_interval, minimum_sample, unit_scope, description, active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [r.id, r.hpt_id, r.method, r.row_start, r.row_interval, r.plant_start, r.plant_interval, r.minimum_sample, r.unit_scope, r.description, r.active]
+      );
+    }
+  });
+}
+export async function getSamplingRuleByHptId(hptId: number): Promise<SamplingRuleRow | null> {
+  const db = await getDb();
+  return (
+    (await db.getFirstAsync<SamplingRuleRow>('SELECT * FROM sampling_rules WHERE hpt_id = ? AND active = 1 ORDER BY id DESC', [hptId])) ?? null
+  );
 }
 
 export async function getCachedIncidents(blokId?: number): Promise<CachedIncident[]> {

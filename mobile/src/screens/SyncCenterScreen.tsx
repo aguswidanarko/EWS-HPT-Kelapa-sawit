@@ -15,6 +15,12 @@ const KIND_LABEL: Record<RiwayatItem['kind'], string> = {
   SENSUS: 'Sensus',
   TREATMENT: 'Pengendalian',
   MORTALITAS: 'Mortalitas',
+  PARTENOCARPI: 'Partenocarpi',
+  WATER_MANAGEMENT: 'Water Management',
+  BAHAN_ORGANIK: 'Bahan Organik',
+  TBM_VEGETATIF: 'TBM Vegetatif',
+  DEFISIENSI_HARA: 'Defisiensi Hara',
+  ACTION_PLAN: 'Action Plan',
 };
 
 const SYNC_META: Record<string, { emoji: string; label: string; color: string }> = {
@@ -64,6 +70,9 @@ export default function SyncCenterScreen() {
               <Text style={styles.summaryHeadline}>{pendingTotal} data belum terkirim</Text>
               <Text style={styles.summaryBreakdown}>
                 Deteksi {pending.deteksi} - Sensus {pending.sensus} - Pengendalian {pending.treatment} - Mortalitas {pending.mortalitas}
+              </Text>
+              <Text style={styles.summaryBreakdown}>
+                Yield Making {pending.yieldMaking} - Defisiensi Hara {pending.defisiensiHara} - Action Plan {pending.actionPlan}
               </Text>
             </>
           ) : (

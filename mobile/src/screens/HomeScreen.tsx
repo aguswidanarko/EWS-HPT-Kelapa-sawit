@@ -14,6 +14,7 @@ import * as treatmentRepo from '../db/repo/treatmentRepo';
 import * as mortalityRepo from '../db/repo/mortalityRepo';
 import * as masterRepo from '../db/repo/masterRepo';
 import * as alertRepo from '../db/repo/alertRepo';
+import * as yieldRepo from '../db/repo/yieldRepo';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Main'>;
@@ -23,16 +24,34 @@ interface Counts {
   sensus: number;
   treatment: number;
   mortalitas: number;
+  yieldMaking: number;
   tugasHariIni: number;
 }
 
-type MenuKey = 'Deteksi' | 'SensusMenu' | 'Pengendalian' | 'Mortalitas' | 'Panduan' | 'Riwayat' | 'Sinkronisasi';
+type MenuKey =
+  | 'Deteksi'
+  | 'SensusMenu'
+  | 'Pengendalian'
+  | 'Mortalitas'
+  | 'YieldMakingMenu'
+  | 'DefisiensiHara'
+  | 'ActionPlan'
+  | 'Panduan'
+  | 'Riwayat'
+  | 'Sinkronisasi';
 
+// SPEC_V2.md section 4 Mobile: "HomeScreen menu grid: tambah entri Yield Making, Defisiensi Hara,
+// Action Plan." Yield Making groups its 4 forms behind one tile (see YieldMakingMenuScreen) rather
+// than 4 separate Home tiles - judgment call to keep this grid's density in line with V1's (10
+// tiles vs the 7 that were here before; a 4-way fan-out would have pushed it to 13).
 const MENU_ITEMS: { key: MenuKey; label: string; emoji: string }[] = [
   { key: 'Deteksi', label: 'Deteksi', emoji: '🔍' },
   { key: 'SensusMenu', label: 'Sensus', emoji: '📊' },
   { key: 'Pengendalian', label: 'Pengendalian', emoji: '🧪' },
   { key: 'Mortalitas', label: 'Mortalitas', emoji: '💀' },
+  { key: 'YieldMakingMenu', label: 'Yield Making', emoji: '🌴' },
+  { key: 'DefisiensiHara', label: 'Defisiensi Hara', emoji: '🍃' },
+  { key: 'ActionPlan', label: 'Action Plan', emoji: '📋' },
   { key: 'Panduan', label: 'Panduan', emoji: '📘' },
   { key: 'Riwayat', label: 'Riwayat', emoji: '🕓' },
   { key: 'Sinkronisasi', label: 'Sinkronisasi', emoji: '🔄' },
@@ -41,20 +60,21 @@ const MENU_ITEMS: { key: MenuKey; label: string; emoji: string }[] = [
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
   const { pendingTotal, pending, lastSyncAt } = useSync();
-  const [counts, setCounts] = useState<Counts>({ deteksi: 0, sensus: 0, treatment: 0, mortalitas: 0, tugasHariIni: 0 });
+  const [counts, setCounts] = useState<Counts>({ deteksi: 0, sensus: 0, treatment: 0, mortalitas: 0, yieldMaking: 0, tugasHariIni: 0 });
   const [alerts, setAlerts] = useState<alertRepo.LocalAlertRow[]>([]);
 
   const load = useCallback(async () => {
     const today = todayDateStr();
-    const [d, s, t, m, tugas, alertRows] = await Promise.all([
+    const [d, s, t, m, y, tugas, alertRows] = await Promise.all([
       detectionRepo.countTodayDetections(today),
       sensusRepo.countTodaySensus(today),
       treatmentRepo.countTodayTreatments(today),
       mortalityRepo.countTodayMortalities(today),
+      yieldRepo.countTodayYieldMaking(today),
       masterRepo.countTodayTasks(today),
       alertRepo.getRecentLocalAlerts(5),
     ]);
-    setCounts({ deteksi: d, sensus: s, treatment: t, mortalitas: m, tugasHariIni: tugas });
+    setCounts({ deteksi: d, sensus: s, treatment: t, mortalitas: m, yieldMaking: y, tugasHariIni: tugas });
     setAlerts(alertRows);
   }, []);
 
@@ -74,6 +94,12 @@ export default function HomeScreen({ navigation }: Props) {
         return navigation.navigate('Pengendalian');
       case 'Mortalitas':
         return navigation.navigate('Mortalitas');
+      case 'YieldMakingMenu':
+        return navigation.navigate('YieldMakingMenu');
+      case 'DefisiensiHara':
+        return navigation.navigate('DefisiensiHara');
+      case 'ActionPlan':
+        return navigation.navigate('ActionPlan');
       case 'Panduan':
         return navigation.navigate('Main', { screen: 'Panduan' });
       case 'Riwayat':
@@ -97,6 +123,7 @@ export default function HomeScreen({ navigation }: Props) {
           <StatTile label="Sensus" value={counts.sensus} />
           <StatTile label="Pengendalian" value={counts.treatment} />
           <StatTile label="Mortalitas" value={counts.mortalitas} />
+          <StatTile label="Yield Making" value={counts.yieldMaking} />
           <StatTile label="Belum tersinkron" value={pendingTotal} emphasize={pendingTotal > 0} />
         </View>
         <Text style={styles.lastSync}>

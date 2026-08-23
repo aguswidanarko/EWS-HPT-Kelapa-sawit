@@ -4,7 +4,17 @@
 // itself (kategori, ews_alert, location_warning, incident linkage beyond an explicit incident_id)
 // so there is never a chance of the mobile app's local-only estimate overriding server truth.
 
-import type { LocalDetection, LocalMortality, LocalSensus, LocalTreatment } from '../types';
+import type {
+  LocalBahanOrganik,
+  LocalDefisiensiHaraTemuan,
+  LocalDetection,
+  LocalMortality,
+  LocalSensus,
+  LocalTbmVegetatif,
+  LocalTreatment,
+  LocalWaterManagement,
+  LocalYieldPartenocarpi,
+} from '../types';
 import { safeParseJson } from '../utils/format';
 
 export function buildDetectionPayload(row: LocalDetection): Record<string, unknown> {
@@ -79,6 +89,129 @@ export function buildTreatmentPayload(row: LocalTreatment): Record<string, unkno
     gps_lng: row.gps_lng,
     status: row.status,
     created_at: row.created_at,
+    source: 'MOBILE',
+  };
+}
+
+// ================================================================== V2 (SPEC_V2.md) payloads
+// Unlike V1's separate "upload record, then link photo back by entity_id" flow, the V2 create
+// routes (routes/yieldMaking.js / routes/defisiensiHara.js) take the photo's server id directly on
+// the CREATE body (`foto_id` / `evidence_photo_id`) - so the photo must be uploaded first, and its
+// resulting server photo id is threaded into these payloads by sync/engine.ts.
+
+export function buildYieldPartenocarpiPayload(row: LocalYieldPartenocarpi, fotoServerId: number | null): Record<string, unknown> {
+  return {
+    local_id: row.local_id,
+    blok_id: row.blok_id,
+    afdeling_id: row.afdeling_id,
+    estate_id: row.estate_id,
+    tanggal: row.tanggal,
+    periode: row.periode,
+    rainfall_mm: row.rainfall_mm,
+    indikator_hujan_pagi: row.indikator_hujan_pagi,
+    total_bunch: row.total_bunch,
+    abnormal_bunch: row.abnormal_bunch,
+    abnormal_bunch_pct: row.abnormal_bunch_pct,
+    populasi_ek: row.populasi_ek,
+    gps_lat: row.gps_lat,
+    gps_lng: row.gps_lng,
+    gps_accuracy: row.gps_accuracy,
+    foto_id: fotoServerId,
+    catatan: row.catatan,
+    device_id: row.device_id,
+    created_at: row.created_at,
+    source: 'MOBILE',
+  };
+}
+
+export function buildWaterManagementPayload(row: LocalWaterManagement, fotoServerId: number | null): Record<string, unknown> {
+  return {
+    local_id: row.local_id,
+    blok_id: row.blok_id,
+    afdeling_id: row.afdeling_id,
+    estate_id: row.estate_id,
+    tanggal: row.tanggal,
+    titik_parit: row.titik_parit,
+    water_level_cm: row.water_level_cm,
+    flooding: row.flooding,
+    flooding_duration_hari: row.flooding_duration_hari,
+    gps_lat: row.gps_lat,
+    gps_lng: row.gps_lng,
+    gps_accuracy: row.gps_accuracy,
+    foto_id: fotoServerId,
+    catatan: row.catatan,
+    device_id: row.device_id,
+    created_at: row.created_at,
+    source: 'MOBILE',
+  };
+}
+
+export function buildBahanOrganikPayload(row: LocalBahanOrganik, fotoServerId: number | null): Record<string, unknown> {
+  return {
+    local_id: row.local_id,
+    blok_id: row.blok_id,
+    afdeling_id: row.afdeling_id,
+    estate_id: row.estate_id,
+    tanggal: row.tanggal,
+    area_type: row.area_type,
+    total_sample: row.total_sample,
+    yellowing_count: row.yellowing_count,
+    yellowing_pct: row.yellowing_pct,
+    vegetative_condition: row.vegetative_condition,
+    baseline_tbm_normal: row.baseline_tbm_normal,
+    comparison_result: row.comparison_result,
+    gps_lat: row.gps_lat,
+    gps_lng: row.gps_lng,
+    gps_accuracy: row.gps_accuracy,
+    foto_id: fotoServerId,
+    catatan: row.catatan,
+    device_id: row.device_id,
+    created_at: row.created_at,
+    source: 'MOBILE',
+  };
+}
+
+export function buildTbmVegetatifPayload(row: LocalTbmVegetatif, fotoServerId: number | null): Record<string, unknown> {
+  return {
+    local_id: row.local_id,
+    blok_id: row.blok_id,
+    afdeling_id: row.afdeling_id,
+    estate_id: row.estate_id,
+    tanggal: row.tanggal,
+    umur_bulan: row.umur_bulan,
+    panjang_pelepah_cm: row.panjang_pelepah_cm,
+    jumlah_pelepah: row.jumlah_pelepah,
+    lai: row.lai,
+    target_produksi_ton_ha: row.target_produksi_ton_ha,
+    hasil_evaluasi: row.hasil_evaluasi,
+    gps_lat: row.gps_lat,
+    gps_lng: row.gps_lng,
+    gps_accuracy: row.gps_accuracy,
+    foto_id: fotoServerId,
+    catatan: row.catatan,
+    device_id: row.device_id,
+    created_at: row.created_at,
+    source: 'MOBILE',
+  };
+}
+
+export function buildDefisiensiHaraTemuanPayload(row: LocalDefisiensiHaraTemuan, fotoServerId: number | null): Record<string, unknown> {
+  return {
+    local_id: row.local_id,
+    leaf_analysis_id: row.leaf_analysis_id,
+    blok_id: row.blok_id,
+    afdeling_id: row.afdeling_id,
+    estate_id: row.estate_id,
+    tanggal: row.tanggal,
+    unsur_hara: row.unsur_hara,
+    temuan_lapangan: row.temuan_lapangan,
+    severity: row.severity,
+    gps_lat: row.gps_lat,
+    gps_lng: row.gps_lng,
+    gps_accuracy: row.gps_accuracy,
+    evidence_photo_id: fotoServerId,
+    catatan: row.catatan,
+    device_id: row.device_id,
     source: 'MOBILE',
   };
 }

@@ -135,6 +135,119 @@ CREATE TABLE IF NOT EXISTS mortalities (
 );
 CREATE INDEX IF NOT EXISTS idx_mortalities_sync ON mortalities(sync_status);
 
+-- ---------------------------------------------------------------- V2 (SPEC_V2.md) master cache
+CREATE TABLE IF NOT EXISTS sampling_rules (
+  id INTEGER PRIMARY KEY,
+  hpt_id INTEGER, method TEXT, row_start INTEGER, row_interval INTEGER,
+  plant_start INTEGER, plant_interval INTEGER, minimum_sample REAL, unit_scope TEXT,
+  description TEXT, active INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS cached_leaf_analysis (
+  id INTEGER PRIMARY KEY,
+  blok_id INTEGER, tanggal TEXT, unsur_hara TEXT, hasil TEXT, severity TEXT, status TEXT,
+  input_by_role TEXT, user_id INTEGER, catatan TEXT, created_at TEXT, updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS cached_action_plans (
+  id INTEGER PRIMARY KEY,
+  local_id TEXT, server_id TEXT, incident_id INTEGER, alert_id INTEGER,
+  problem TEXT, recommendation TEXT, actual_action TEXT, pic_user_id INTEGER, due_date TEXT,
+  status TEXT, evidence_photo_id INTEGER, verification_note TEXT, verified_by_user_id INTEGER,
+  verified_at TEXT, overdue INTEGER, escalated INTEGER, related_leaf_analysis_id INTEGER,
+  created_at TEXT, updated_at TEXT
+);
+
+-- ---------------------------------------------------------------- V2 field records (offline-authored)
+-- Every table below shares the exact SPEC_V2.md-mandated envelope (local_id/server_id/
+-- server_row_id/incident_id/user_id/device_id/created_at/updated_at/sync_status/sync_attempt/
+-- sync_error/source) so db/repo/syncCommon.ts's generic FieldTable helpers work unmodified -
+-- there is deliberately no activity_id column (V2 tables don't have one, see types.ts SyncEnvelopeV2).
+CREATE TABLE IF NOT EXISTS yield_partenocarpi (
+  local_id TEXT PRIMARY KEY,
+  server_id TEXT, server_row_id INTEGER, incident_id INTEGER, user_id INTEGER, device_id TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  sync_status TEXT NOT NULL DEFAULT 'DRAFT', sync_attempt INTEGER NOT NULL DEFAULT 0,
+  sync_error TEXT, source TEXT NOT NULL DEFAULT 'MOBILE',
+  estate_id INTEGER, afdeling_id INTEGER, blok_id INTEGER NOT NULL, tanggal TEXT NOT NULL, periode TEXT,
+  rainfall_mm REAL, indikator_hujan_pagi REAL, total_bunch REAL, abnormal_bunch REAL, abnormal_bunch_pct REAL,
+  populasi_ek REAL, kategori_lokal TEXT, ews_alert_lokal INTEGER NOT NULL DEFAULT 0,
+  gps_lat REAL, gps_lng REAL, gps_accuracy REAL, gps_timestamp TEXT, location_warning INTEGER NOT NULL DEFAULT 0,
+  foto_local_id TEXT, catatan TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_yield_partenocarpi_sync ON yield_partenocarpi(sync_status);
+
+CREATE TABLE IF NOT EXISTS water_management (
+  local_id TEXT PRIMARY KEY,
+  server_id TEXT, server_row_id INTEGER, incident_id INTEGER, user_id INTEGER, device_id TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  sync_status TEXT NOT NULL DEFAULT 'DRAFT', sync_attempt INTEGER NOT NULL DEFAULT 0,
+  sync_error TEXT, source TEXT NOT NULL DEFAULT 'MOBILE',
+  estate_id INTEGER, afdeling_id INTEGER, blok_id INTEGER NOT NULL, titik_parit TEXT, tanggal TEXT NOT NULL,
+  water_level_cm REAL, flooding INTEGER NOT NULL DEFAULT 0, flooding_duration_hari REAL,
+  kategori_lokal TEXT, ews_alert_lokal INTEGER NOT NULL DEFAULT 0,
+  gps_lat REAL, gps_lng REAL, gps_accuracy REAL, gps_timestamp TEXT, location_warning INTEGER NOT NULL DEFAULT 0,
+  foto_local_id TEXT, catatan TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_water_management_sync ON water_management(sync_status);
+
+CREATE TABLE IF NOT EXISTS bahan_organik (
+  local_id TEXT PRIMARY KEY,
+  server_id TEXT, server_row_id INTEGER, incident_id INTEGER, user_id INTEGER, device_id TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  sync_status TEXT NOT NULL DEFAULT 'DRAFT', sync_attempt INTEGER NOT NULL DEFAULT 0,
+  sync_error TEXT, source TEXT NOT NULL DEFAULT 'MOBILE',
+  estate_id INTEGER, afdeling_id INTEGER, blok_id INTEGER NOT NULL, area_type TEXT, tanggal TEXT NOT NULL,
+  total_sample REAL, yellowing_count REAL, yellowing_pct REAL, vegetative_condition TEXT,
+  baseline_tbm_normal TEXT, comparison_result TEXT,
+  kategori_lokal TEXT, ews_alert_lokal INTEGER NOT NULL DEFAULT 0,
+  gps_lat REAL, gps_lng REAL, gps_accuracy REAL, gps_timestamp TEXT, location_warning INTEGER NOT NULL DEFAULT 0,
+  foto_local_id TEXT, catatan TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_bahan_organik_sync ON bahan_organik(sync_status);
+
+CREATE TABLE IF NOT EXISTS tbm_vegetatif (
+  local_id TEXT PRIMARY KEY,
+  server_id TEXT, server_row_id INTEGER, incident_id INTEGER, user_id INTEGER, device_id TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  sync_status TEXT NOT NULL DEFAULT 'DRAFT', sync_attempt INTEGER NOT NULL DEFAULT 0,
+  sync_error TEXT, source TEXT NOT NULL DEFAULT 'MOBILE',
+  estate_id INTEGER, afdeling_id INTEGER, blok_id INTEGER NOT NULL, tanggal TEXT NOT NULL, umur_bulan REAL,
+  panjang_pelepah_cm REAL, jumlah_pelepah REAL, lai REAL, target_produksi_ton_ha REAL, hasil_evaluasi TEXT,
+  kategori_lokal TEXT, ews_alert_lokal INTEGER NOT NULL DEFAULT 0,
+  gps_lat REAL, gps_lng REAL, gps_accuracy REAL, gps_timestamp TEXT, location_warning INTEGER NOT NULL DEFAULT 0,
+  foto_local_id TEXT, catatan TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_tbm_vegetatif_sync ON tbm_vegetatif(sync_status);
+
+CREATE TABLE IF NOT EXISTS defisiensi_hara_temuan (
+  local_id TEXT PRIMARY KEY,
+  server_id TEXT, server_row_id INTEGER, incident_id INTEGER, user_id INTEGER, device_id TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  sync_status TEXT NOT NULL DEFAULT 'DRAFT', sync_attempt INTEGER NOT NULL DEFAULT 0,
+  sync_error TEXT, source TEXT NOT NULL DEFAULT 'MOBILE',
+  leaf_analysis_id INTEGER, estate_id INTEGER, afdeling_id INTEGER, blok_id INTEGER NOT NULL, tanggal TEXT NOT NULL,
+  unsur_hara TEXT, temuan_lapangan TEXT, severity TEXT, status TEXT NOT NULL DEFAULT 'OPEN',
+  action_plan_id INTEGER, evidence_photo_id INTEGER,
+  gps_lat REAL, gps_lng REAL, gps_accuracy REAL, gps_timestamp TEXT, location_warning INTEGER NOT NULL DEFAULT 0,
+  foto_local_id TEXT, catatan TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_defisiensi_hara_temuan_sync ON defisiensi_hara_temuan(sync_status);
+
+-- action_plan is NOT authored on mobile (it's created by Admin/Askep/Manager/RND on the dashboard) -
+-- this table only queues EDITS (actual_action/status/evidence) against an existing server row, see
+-- types.ts LocalActionPlanUpdate. No activity/incident/gps columns because it targets an existing
+-- record rather than describing a new field observation.
+CREATE TABLE IF NOT EXISTS action_plan_updates (
+  local_id TEXT PRIMARY KEY,
+  action_plan_id INTEGER NOT NULL,
+  status TEXT, actual_action TEXT, foto_local_id TEXT, evidence_photo_id INTEGER,
+  user_id INTEGER, device_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  sync_status TEXT NOT NULL DEFAULT 'DRAFT', sync_attempt INTEGER NOT NULL DEFAULT 0,
+  sync_error TEXT, source TEXT NOT NULL DEFAULT 'MOBILE'
+);
+CREATE INDEX IF NOT EXISTS idx_action_plan_updates_sync ON action_plan_updates(sync_status);
+
 CREATE TABLE IF NOT EXISTS photos (
   local_id TEXT PRIMARY KEY,
   entity_type TEXT NOT NULL, entity_local_id TEXT NOT NULL, file_uri TEXT NOT NULL,

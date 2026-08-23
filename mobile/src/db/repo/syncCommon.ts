@@ -6,7 +6,19 @@
 import { getDb } from '../database';
 import type { SyncStatus } from '../../types';
 
-export type FieldTable = 'detections' | 'sensus' | 'treatments' | 'mortalities';
+// V2 (SPEC_V2.md section 2 closing note) tables reuse this exact same envelope shape (server_id/
+// server_row_id/incident_id/sync_status/sync_attempt/sync_error/updated_at), so every function
+// below works unmodified for them too - no separate V2 sync-common module needed.
+export type FieldTable =
+  | 'detections'
+  | 'sensus'
+  | 'treatments'
+  | 'mortalities'
+  | 'yield_partenocarpi'
+  | 'water_management'
+  | 'bahan_organik'
+  | 'tbm_vegetatif'
+  | 'defisiensi_hara_temuan';
 
 export async function markSyncing(table: FieldTable, localId: string): Promise<void> {
   const db = await getDb();
@@ -70,4 +82,22 @@ export async function countPending(table: FieldTable): Promise<number> {
     `SELECT COUNT(*) as c FROM ${table} WHERE sync_status IN ('READY_TO_SYNC','FAILED')`
   );
   return row?.c ?? 0;
+}
+
+/** V2 yield-making tables don't carry a local formula engine (SPEC_V2.md's generic rule engine
+ * lives server-side only - see services/ruleEngine.js), so kategori_lokal/ews_alert_lokal start
+ * NULL/0 at insert time and are back-filled from the server's `classification` response once the
+ * record actually syncs, purely for the Riwayat/local-alert list to have something to show. */
+export async function updateClassification(
+  table: 'yield_partenocarpi' | 'water_management' | 'bahan_organik' | 'tbm_vegetatif',
+  localId: string,
+  kategori: string | null,
+  ewsAlert: boolean
+): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(`UPDATE ${table} SET kategori_lokal = ?, ews_alert_lokal = ? WHERE local_id = ?`, [
+    kategori,
+    ewsAlert ? 1 : 0,
+    localId,
+  ]);
 }

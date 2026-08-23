@@ -247,7 +247,17 @@ export type FieldRecordKind = 'deteksi' | 'sensus' | 'treatment' | 'mortalitas';
 
 export interface LocalPhoto {
   local_id: string;
-  entity_type: 'DETECTION' | 'SENSUS' | 'TREATMENT' | 'MORTALITY';
+  entity_type:
+    | 'DETECTION'
+    | 'SENSUS'
+    | 'TREATMENT'
+    | 'MORTALITY'
+    | 'YIELD_PARTENOCARPI'
+    | 'WATER_MANAGEMENT'
+    | 'BAHAN_ORGANIK'
+    | 'TBM_VEGETATIF'
+    | 'DEFISIENSI_HARA_TEMUAN'
+    | 'ACTION_PLAN';
   entity_local_id: string;
   file_uri: string;
   gps_lat: number | null;
@@ -265,6 +275,206 @@ export interface SyncCounts {
   sensus: number;
   treatment: number;
   mortalitas: number;
+  /** SPEC_V2.md section 4: combined count across the 4 yield_making tables (partenocarpi/water/
+   * organik/tbm) - broken out per-table only where a screen needs it, summed everywhere else. */
+  yieldMaking: number;
+  defisiensiHara: number;
+  actionPlan: number;
+}
+
+// ================================================================== V2 (SPEC_V2.md) additions
+// Every V2 field-record table (yield_partenocarpi/water_management/bahan_organik/tbm_vegetatif/
+// defisiensi_hara_temuan) carries the SAME sync envelope shape as V1 (local_id/server_id/
+// server_row_id/incident_id/user_id/device_id/created_at/updated_at/sync_status/sync_attempt/
+// sync_error/source - SPEC_V2.md section 2 closing note) EXCEPT it has no activity_id column
+// (that's a V1-only concept absent from every V2 table definition).
+export interface SyncEnvelopeV2 {
+  local_id: string;
+  server_id: string | null;
+  server_row_id: number | null;
+  incident_id: number | null;
+  user_id: number | null;
+  device_id: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: SyncStatus;
+  sync_attempt: number;
+  sync_error: string | null;
+  source: SourceTag;
+}
+
+export interface LocalYieldPartenocarpi extends SyncEnvelopeV2, GpsCapture {
+  estate_id: number | null;
+  afdeling_id: number | null;
+  blok_id: number;
+  tanggal: string;
+  periode: string | null;
+  rainfall_mm: number | null;
+  indikator_hujan_pagi: number | null;
+  total_bunch: number | null;
+  abnormal_bunch: number | null;
+  abnormal_bunch_pct: number | null;
+  populasi_ek: number | null;
+  kategori_lokal: string | null;
+  ews_alert_lokal: 0 | 1;
+  location_warning: 0 | 1;
+  foto_local_id: string | null;
+  catatan: string | null;
+}
+
+export interface LocalWaterManagement extends SyncEnvelopeV2, GpsCapture {
+  estate_id: number | null;
+  afdeling_id: number | null;
+  blok_id: number;
+  titik_parit: string | null;
+  tanggal: string;
+  water_level_cm: number | null;
+  flooding: 0 | 1;
+  flooding_duration_hari: number | null;
+  kategori_lokal: string | null;
+  ews_alert_lokal: 0 | 1;
+  location_warning: 0 | 1;
+  foto_local_id: string | null;
+  catatan: string | null;
+}
+
+export interface LocalBahanOrganik extends SyncEnvelopeV2, GpsCapture {
+  estate_id: number | null;
+  afdeling_id: number | null;
+  blok_id: number;
+  area_type: string | null;
+  tanggal: string;
+  total_sample: number | null;
+  yellowing_count: number | null;
+  yellowing_pct: number | null;
+  vegetative_condition: string | null;
+  baseline_tbm_normal: string | null;
+  comparison_result: string | null;
+  kategori_lokal: string | null;
+  ews_alert_lokal: 0 | 1;
+  location_warning: 0 | 1;
+  foto_local_id: string | null;
+  catatan: string | null;
+}
+
+export interface LocalTbmVegetatif extends SyncEnvelopeV2, GpsCapture {
+  estate_id: number | null;
+  afdeling_id: number | null;
+  blok_id: number;
+  tanggal: string;
+  umur_bulan: number | null;
+  panjang_pelepah_cm: number | null;
+  jumlah_pelepah: number | null;
+  lai: number | null;
+  target_produksi_ton_ha: number | null;
+  hasil_evaluasi: string | null;
+  kategori_lokal: string | null;
+  ews_alert_lokal: 0 | 1;
+  location_warning: 0 | 1;
+  foto_local_id: string | null;
+  catatan: string | null;
+}
+
+export type YieldMakingKind = 'PARTENOCARPI' | 'WATER_MANAGEMENT' | 'BAHAN_ORGANIK' | 'TBM_VEGETATIF';
+
+export interface LocalDefisiensiHaraTemuan extends SyncEnvelopeV2, GpsCapture {
+  leaf_analysis_id: number | null;
+  estate_id: number | null;
+  afdeling_id: number | null;
+  blok_id: number;
+  tanggal: string;
+  unsur_hara: string | null;
+  temuan_lapangan: string | null;
+  severity: string | null;
+  status: string;
+  action_plan_id: number | null;
+  evidence_photo_id: number | null;
+  foto_local_id: string | null;
+  location_warning: 0 | 1;
+  catatan: string | null;
+}
+
+/** Riset's lab-side foliar analysis (read-only reference data cached from GET /leaf-analysis - see
+ * routes/leafAnalysis.js). Mobile never writes this; it only informs which bloks have a flagged
+ * deficiency so the field officer knows where to record a defisiensi_hara_temuan. */
+export interface CachedLeafAnalysis {
+  id: number;
+  blok_id: number | null;
+  tanggal: string;
+  unsur_hara: string;
+  hasil: string | null;
+  severity: string | null;
+  status: string;
+  input_by_role: string;
+  user_id: number | null;
+  catatan: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Read-only cache of action_plan rows assigned to this user (pic_user_id) - downloaded like
+ * cached_incidents, mirrors backend/src/routes/actionPlans.js's row shape. */
+export interface CachedActionPlan {
+  id: number;
+  local_id: string | null;
+  server_id: string | null;
+  incident_id: number | null;
+  alert_id: number | null;
+  problem: string | null;
+  recommendation: string | null;
+  actual_action: string | null;
+  pic_user_id: number | null;
+  due_date: string | null;
+  status: string;
+  evidence_photo_id: number | null;
+  verification_note: string | null;
+  verified_by_user_id: number | null;
+  verified_at: string | null;
+  overdue: 0 | 1;
+  escalated: 0 | 1;
+  related_leaf_analysis_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const ACTION_PLAN_STATUSES = ['OPEN', 'PLANNED', 'IN_PROGRESS', 'COMPLETED', 'VERIFIED', 'CLOSED'] as const;
+export type ActionPlanStatus = (typeof ACTION_PLAN_STATUSES)[number];
+
+/** A queued offline edit to one action_plan (PUT /action-plans/:id: actual_action/status/
+ * evidence_photo_id) - SPEC_V2.md section 4 Mobile: "form actual action/status/evidence". Uses the
+ * same DRAFT->READY_TO_SYNC->SYNCING->SYNCED/FAILED envelope as every other field record, but
+ * targets an EXISTING server row (action_plan_id) instead of creating a new one. */
+export interface LocalActionPlanUpdate {
+  local_id: string;
+  action_plan_id: number;
+  status: ActionPlanStatus | null;
+  actual_action: string | null;
+  foto_local_id: string | null;
+  evidence_photo_id: number | null;
+  user_id: number | null;
+  device_id: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: SyncStatus;
+  sync_attempt: number;
+  sync_error: string | null;
+  source: SourceTag;
+}
+
+/** Local cache of `sampling_rule` (GET /api/formulas/sampling-rules) - SPEC_V2.md section 4 Mobile:
+ * "Sampling Assistant: generalize supaya baca sampling_rule". */
+export interface SamplingRuleRow {
+  id: number;
+  hpt_id: number;
+  method: string | null;
+  row_start: number | null;
+  row_interval: number | null;
+  plant_start: number | null;
+  plant_interval: number | null;
+  minimum_sample: number | null;
+  unit_scope: string | null;
+  description: string | null;
+  active: number;
 }
 
 export interface SyncItemStatus {
