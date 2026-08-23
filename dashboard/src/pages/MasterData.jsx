@@ -4,7 +4,8 @@ import { useMasterData } from '../context/MasterDataContext';
 import { useAuth, canWriteMaster, canWriteMasterHptThreshold } from '../context/AuthContext';
 import MasterCrud from '../components/MasterCrud';
 
-const TABS = ['Estate', 'Afdeling', 'Blok', 'HPT', 'Species', 'Threshold'];
+const TABS = ['Estate', 'Afdeling', 'Blok', 'Indikator', 'Kategori Indikator', 'Species', 'Threshold'];
+const INDICATOR_TYPES = ['HPT', 'YIELD_MAKING', 'AGRONOMY', 'DEFISIENSI_HARA'];
 
 export default function MasterData() {
   const { user } = useAuth();
@@ -93,16 +94,19 @@ export default function MasterData() {
         />
       )}
 
-      {tab === 'HPT' && (
+      {tab === 'Indikator' && (
         <MasterCrud
-          title="HPT"
+          title="Indikator"
+          description="Generalisasi dari 'Master HPT' V1 (SPEC_V2.md section 2): tabel hpt dipakai ulang sebagai tabel indikator EWS generik lewat kolom indicator_type + category_id, mencakup HPT, Yield Making, Agronomy, dan Defisiensi Hara."
           canWrite={canWriteMasterHptThreshold(user)}
           api={masterApi.hpt}
           onChanged={md.reload}
           columns={[
             { key: 'code', header: 'Kode' },
             { key: 'name', header: 'Nama' },
-            { key: 'kategori', header: 'Kategori' },
+            { key: 'indicator_type', header: 'Tipe Indikator', render: (r) => r.indicator_type || 'HPT' },
+            { key: 'category_id', header: 'Kategori', render: (r) => (r.category_id ? md.ewsCategoryName(r.category_id) : '-') },
+            { key: 'kategori', header: 'Kategori HPT' },
             { key: 'satuan', header: 'Satuan' },
             { key: 'status_aktif', header: 'Aktif', render: (r) => r.status_aktif ? 'Ya' : 'Tidak' },
           ]}
@@ -110,7 +114,9 @@ export default function MasterData() {
             { key: 'code', label: 'Kode', required: true },
             { key: 'name', label: 'Nama', required: true },
             { key: 'nama_lokal', label: 'Nama Lokal' },
-            { key: 'kategori', label: 'Kategori', type: 'select', options: [{ value: 'HAMA', label: 'Hama' }, { value: 'PENYAKIT', label: 'Penyakit' }] },
+            { key: 'indicator_type', label: 'Tipe Indikator', type: 'select', options: INDICATOR_TYPES.map((t) => ({ value: t, label: t })) },
+            { key: 'category_id', label: 'Kategori Indikator', type: 'select', options: md.ewsCategories.map((c) => ({ value: c.id, label: c.name })) },
+            { key: 'kategori', label: 'Kategori HPT (Hama/Penyakit — khusus indicator_type=HPT)', type: 'select', options: [{ value: 'HAMA', label: 'Hama' }, { value: 'PENYAKIT', label: 'Penyakit' }] },
             { key: 'status_aktif', label: 'Status Aktif', type: 'checkbox' },
             { key: 'satuan', label: 'Satuan' },
             { key: 'metode_deteksi', label: 'Metode Deteksi' },
@@ -119,6 +125,24 @@ export default function MasterData() {
             { key: 'gejala', label: 'Gejala', type: 'textarea', wide: true },
             { key: 'threshold_default', label: 'Threshold Default (ket.)', type: 'textarea', wide: true },
             { key: 'panduan_md', label: 'Panduan (Markdown)', type: 'textarea', wide: true },
+          ]}
+        />
+      )}
+
+      {tab === 'Kategori Indikator' && (
+        <MasterCrud
+          title="Kategori Indikator (ews_category)"
+          description="Payung kategori indikator EWS: HPT, YIELD_MAKING, AGRONOMY, DEFISIENSI_HARA (SPEC_V2.md section 2)."
+          canWrite={canWriteMasterHptThreshold(user)}
+          api={masterApi.ewsCategories}
+          onChanged={md.reload}
+          columns={[
+            { key: 'code', header: 'Kode' },
+            { key: 'name', header: 'Nama' },
+          ]}
+          fields={[
+            { key: 'code', label: 'Kode', required: true },
+            { key: 'name', label: 'Nama', required: true },
           ]}
         />
       )}

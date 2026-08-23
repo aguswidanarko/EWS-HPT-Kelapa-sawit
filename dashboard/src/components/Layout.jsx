@@ -21,11 +21,30 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: 'Yield Making',
+    items: [
+      { to: '/yield-making/partenocarpi', icon: '🌴', label: 'Partenocarpi / Elaeidobius' },
+      { to: '/yield-making/water-management', icon: '💧', label: 'Water Management' },
+      { to: '/yield-making/bahan-organik', icon: '🍃', label: 'Bahan Organik' },
+      { to: '/yield-making/tbm-vegetatif', icon: '🌱', label: 'TBM Vegetatif' },
+      { to: '/defisiensi-hara', icon: '🧪', label: 'Defisiensi Hara' },
+    ],
+  },
+  {
+    label: 'Tindak Lanjut',
+    items: [
+      { to: '/action-plans', icon: '✅', label: 'Action Plan' },
+      { to: '/monitoring-schedule', icon: '🗓', label: 'Monitoring Schedule' },
+      { to: '/scoring', icon: '🏆', label: 'Scoring / KPI' },
+    ],
+  },
+  {
     label: 'Konfigurasi',
     items: [
       { to: '/knowledge-base', icon: '📚', label: 'Knowledge Base' },
       { to: '/import', icon: '📥', label: 'Import Data' },
       { to: '/master', icon: '🗃', label: 'Master Data' },
+      { to: '/rules', icon: '🛠', label: 'Rule & Parameter Management' },
       { to: '/pic-user', icon: '👥', label: 'PIC / User' },
       { to: '/notification', icon: '📣', label: 'Notification' },
     ],
@@ -58,8 +77,8 @@ export default function Layout() {
         <div className="sidebar-brand">
           <div className="sidebar-brand-mark">EWS</div>
           <div className="sidebar-brand-text">
-            <strong>EWS HPT</strong>
-            <span>Dashboard Kelapa Sawit</span>
+            <strong>EWS Plantation</strong>
+            <span>HPT + Yield Making + Agronomy</span>
           </div>
         </div>
         <nav className="sidebar-nav">
@@ -83,7 +102,7 @@ export default function Layout() {
       </aside>
       <div className="main-col">
         <header className="topbar">
-          <div className="topbar-title">EWS HPT — Early Warning, Action, Monitoring</div>
+          <div className="topbar-title">EWS Plantation — Early Warning, Action, Monitoring</div>
           <div className="topbar-user">
             <span>{user?.name}</span>
             <span className="role-pill">{user?.role_name}</span>

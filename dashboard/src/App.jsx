@@ -24,6 +24,18 @@ import Report from './pages/Report';
 import AuditLog from './pages/AuditLog';
 import SystemSettings from './pages/SystemSettings';
 
+// V2 (SPEC_V2.md section 4 Dashboard)
+import Partenocarpi from './pages/yieldMaking/Partenocarpi';
+import WaterManagement from './pages/yieldMaking/WaterManagement';
+import BahanOrganik from './pages/yieldMaking/BahanOrganik';
+import TbmVegetatif from './pages/yieldMaking/TbmVegetatif';
+import DefisiensiHara from './pages/DefisiensiHara';
+import ActionPlanList from './pages/ActionPlanList';
+import ActionPlanDetail from './pages/ActionPlanDetail';
+import MonitoringSchedule from './pages/MonitoringSchedule';
+import RuleParameterManagement from './pages/RuleParameterManagement';
+import ScoringKpi from './pages/ScoringKpi';
+
 function AuthedShell() {
   return (
     <ProtectedRoute>
@@ -51,6 +63,16 @@ export default function App() {
             <Route path="/alerts/:id" element={<AlertDetail />} />
             <Route path="/incidents" element={<IncidentManagement />} />
             <Route path="/incidents/:id" element={<IncidentDetail />} />
+            <Route path="/yield-making/partenocarpi" element={<Partenocarpi />} />
+            <Route path="/yield-making/water-management" element={<WaterManagement />} />
+            <Route path="/yield-making/bahan-organik" element={<BahanOrganik />} />
+            <Route path="/yield-making/tbm-vegetatif" element={<TbmVegetatif />} />
+            <Route path="/defisiensi-hara" element={<DefisiensiHara />} />
+            <Route path="/action-plans" element={<ActionPlanList />} />
+            <Route path="/action-plans/:id" element={<ActionPlanDetail />} />
+            <Route path="/monitoring-schedule" element={<MonitoringSchedule />} />
+            <Route path="/rules" element={<RuleParameterManagement />} />
+            <Route path="/scoring" element={<ScoringKpi />} />
             <Route path="/knowledge-base" element={<KnowledgeBase />} />
             <Route path="/import" element={<ImportData />} />
             <Route path="/master" element={<MasterData />} />

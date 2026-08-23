@@ -20,3 +20,15 @@ export function Field({ label, children }) {
     </div>
   );
 }
+
+export function WarningBanner({ title, children }) {
+  return (
+    <div className="banner-warning">
+      <span className="banner-icon">⚠️</span>
+      <div>
+        {title && <strong>{title}</strong>}
+        {children}
+      </div>
+    </div>
+  );
+}

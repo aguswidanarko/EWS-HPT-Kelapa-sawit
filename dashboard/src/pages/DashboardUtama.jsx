@@ -56,6 +56,19 @@ export default function DashboardUtama() {
         ))}
       </div>
 
+      <div className="toolbar" style={{ marginBottom: 20 }}>
+        {[
+          ['/yield-making/partenocarpi', '🌴 Yield Making'],
+          ['/defisiensi-hara', '🧪 Defisiensi Hara'],
+          ['/action-plans', '✅ Action Plan'],
+          ['/monitoring-schedule', '🗓 Monitoring Schedule'],
+          ['/rules', '🛠 Rule & Parameter'],
+          ['/scoring', '🏆 Scoring / KPI'],
+        ].map(([to, label]) => (
+          <Link key={to} className="btn btn-sm" to={to}>{label}</Link>
+        ))}
+      </div>
+
       <div className="grid-2">
         <div className="card card-pad">
           <div className="section-title mt-0">Insiden per Severity</div>

@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { incidentsApi } from '../api/resources';
+import { incidentsApi, actionPlansApi } from '../api/resources';
 import { Loading, ErrorBox, Empty } from '../components/Common';
 import { SeverityBadge, StatusBadge } from '../components/Badges';
-import { fmtDateTime } from '../utils/format';
+import { fmtDateTime, fmtDate } from '../utils/format';
 import IncidentTimeline from '../components/IncidentTimeline';
 
 export default function IncidentDetail() {
   const { id } = useParams();
   const [incident, setIncident] = useState(null);
+  const [actionPlans, setActionPlans] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
     incidentsApi.get(id).then(setIncident).catch(setError).finally(() => setLoading(false));
+    actionPlansApi.list({ incident_id: id }).then(setActionPlans).catch(() => {});
   }, [id]);
 
   if (loading) return <Loading />;
@@ -45,9 +47,30 @@ export default function IncidentDetail() {
         <div className="detail-item"><div className="dl">Jumlah Alert</div><div className="dv">{incident.alerts?.length || 0}</div></div>
       </div>
 
-      <div className="card card-pad">
+      <div className="card card-pad" style={{ marginBottom: 16 }}>
         <div className="section-title mt-0">Timeline Lengkap (Deteksi → Warning → Sensus → Treatment → Mortalitas)</div>
         <IncidentTimeline incident={incident} />
+      </div>
+
+      <div className="card card-pad">
+        <div className="section-title mt-0" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Action Plan Terkait</span>
+          <Link className="btn btn-sm" to={`/action-plans?incident_id=${incident.id}`}>+ Buat Action Plan</Link>
+        </div>
+        {actionPlans.length === 0 ? <Empty label="Belum ada action plan untuk insiden ini." /> : (
+          actionPlans.map((ap) => (
+            <Link key={ap.id} to={`/action-plans/${ap.id}`} style={{ display: 'block', textDecoration: 'none' }}>
+              <div className="stat-line">
+                <span>#{ap.id} — {(ap.problem || '-').slice(0, 60)}</span>
+                <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {ap.overdue ? <span className="overdue-flag">⚠</span> : null}
+                  <span className="small-muted">{fmtDate(ap.due_date)}</span>
+                  <StatusBadge status={ap.status} />
+                </span>
+              </div>
+            </Link>
+          ))
+        )}
       </div>
     </div>
   );

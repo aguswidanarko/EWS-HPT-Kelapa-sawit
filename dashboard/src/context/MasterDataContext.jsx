@@ -10,6 +10,7 @@ export function MasterDataProvider({ children }) {
   const [hpt, setHpt] = useState([]);
   const [species, setSpecies] = useState([]);
   const [users, setUsers] = useState([]);
+  const [ewsCategories, setEwsCategories] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   const reload = useCallback(() => {
@@ -20,13 +21,15 @@ export function MasterDataProvider({ children }) {
       masterApi.hpt.list().catch(() => []),
       masterApi.species.list().catch(() => []),
       usersApi.list().catch(() => []),
-    ]).then(([e, a, b, h, s, u]) => {
+      masterApi.ewsCategories.list().catch(() => []),
+    ]).then(([e, a, b, h, s, u, c]) => {
       setEstates(e || []);
       setAfdelings(a || []);
       setBloks(b || []);
       setHpt(h || []);
       setSpecies(s || []);
       setUsers(u || []);
+      setEwsCategories(c || []);
       setLoaded(true);
     });
   }, []);
@@ -44,20 +47,24 @@ export function MasterDataProvider({ children }) {
       hptById: byId(hpt),
       speciesById: byId(species),
       userById: byId(users),
+      ewsCategoryById: byId(ewsCategories),
     };
-  }, [estates, afdelings, bloks, hpt, species, users]);
+  }, [estates, afdelings, bloks, hpt, species, users, ewsCategories]);
 
   const value = useMemo(() => ({
-    estates, afdelings, bloks, hpt, species, users, loaded, reload, ...maps,
+    estates, afdelings, bloks, hpt, species, users, ewsCategories, loaded, reload, ...maps,
     estateName: (id) => maps.estateById[String(id)]?.name || (id ? `#${id}` : '-'),
     afdelingName: (id) => maps.afdelingById[String(id)]?.name || (id ? `#${id}` : '-'),
     blokName: (id) => maps.blokById[String(id)]?.code || (id ? `#${id}` : '-'),
     hptName: (id) => maps.hptById[String(id)]?.name || (id ? `#${id}` : '-'),
     speciesName: (id) => maps.speciesById[String(id)]?.name || (id ? `#${id}` : '-'),
     userName: (id) => maps.userById[String(id)]?.name || (id ? `#${id}` : '-'),
+    ewsCategoryName: (id) => maps.ewsCategoryById[String(id)]?.name || (id ? `#${id}` : '-'),
     bloksByAfdeling: (afdelingId) => bloks.filter((b) => String(b.afdeling_id) === String(afdelingId)),
     afdelingsByEstate: (estateId) => afdelings.filter((a) => String(a.estate_id) === String(estateId)),
-  }), [estates, afdelings, bloks, hpt, species, users, loaded, reload, maps]);
+    // Indicator table (hpt) narrowed by V2 indicator_type -- see SPEC_V2.md section 2.
+    hptByIndicatorType: (type) => hpt.filter((h) => (h.indicator_type || 'HPT') === type),
+  }), [estates, afdelings, bloks, hpt, species, users, ewsCategories, loaded, reload, maps]);
 
   return <MasterDataContext.Provider value={value}>{children}</MasterDataContext.Provider>;
 }

@@ -4,12 +4,15 @@ import { useAuth } from '../context/AuthContext';
 
 const DEMO_USERS = [
   ['admin@ews.local', 'Administrator'],
+  ['superadmin@ews.local', 'Super Admin'],
   ['rnd@ews.local', 'R&D / FOD'],
+  ['riset@ews.local', 'Riset (Leaf Analysis / Defisiensi Hara)'],
   ['manager@ews.local', 'Manager'],
   ['askep@ews.local', 'Askep / Asisten'],
   ['deteksi@ews.local', 'Petugas Deteksi'],
   ['sensus@ews.local', 'Petugas Sensus'],
   ['pengendalian@ews.local', 'Petugas Pengendalian'],
+  ['viewer@ews.local', 'Viewer / Management (read-only)'],
 ];
 
 export default function Login() {
@@ -40,8 +43,8 @@ export default function Login() {
     <div className="login-shell">
       <div className="login-card">
         <div className="sidebar-brand-mark" style={{ marginBottom: 10 }}>EWS</div>
-        <h1>EWS HPT Dashboard</h1>
-        <div className="sub">Early Warning System — Hama &amp; Penyakit Tanaman Kelapa Sawit</div>
+        <h1>EWS Plantation Dashboard</h1>
+        <div className="sub">Early Warning System — HPT, Yield Making &amp; Agronomy Kelapa Sawit</div>
         <form onSubmit={handleSubmit}>
           <div className="field">
             <label>Email</label>

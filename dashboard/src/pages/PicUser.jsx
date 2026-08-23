@@ -59,7 +59,11 @@ export default function PicUser() {
   );
 }
 
-const ROLE_OPTIONS = ['ADMIN', 'RND_FOD', 'MANAGER', 'ASKEP_ASISTEN', 'PETUGAS_DETEKSI', 'PETUGAS_SENSUS', 'PETUGAS_PENGENDALIAN'];
+const ROLE_OPTIONS = [
+  'ADMIN', 'SUPER_ADMIN', 'RND_FOD', 'MANAGER', 'ASKEP_ASISTEN',
+  'PETUGAS_DETEKSI', 'PETUGAS_SENSUS', 'PETUGAS_PENGENDALIAN',
+  'RISET', 'VIEWER_MANAGEMENT',
+];
 
 function UsersTab({ canWrite, md }) {
   const [rows, setRows] = useState([]);

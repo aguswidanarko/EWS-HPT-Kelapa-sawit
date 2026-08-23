@@ -1,11 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Polygon, Popup, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { gisApi, masterApi } from '../api/resources';
+import { gisApi, masterApi, yieldMakingApi, defisiensiHaraApi } from '../api/resources';
 import { Loading, ErrorBox, Empty, Field } from '../components/Common';
 import { SeverityBadge } from '../components/Badges';
 import { COLOR_NAME_MAP, fmtDate, fmtNum, safeJsonParse } from '../utils/format';
 import { useAuth, canWriteMasterHptThreshold } from '../context/AuthContext';
+
+// V2 (SPEC_V2.md section 4 Dashboard: "Peta EWS: tambah layer Defisiensi Hara, Water Management,
+// Yield Making"). The backend GIS heatmap endpoint (routes/gis.js GET /heatmap) still only reads
+// from the `detection` table and was not extended for the new modules, so rather than a backend
+// change this pulls each Yield Making sub-module + Defisiensi Hara field findings directly from
+// their own list endpoints (each already carries gps_lat/gps_lng/kategori) and renders them as
+// additional client-side point layers, reusing the same CircleMarker approach as the existing
+// detection heatmap.
+const YIELD_LAYER_DEFS = [
+  { key: 'partenocarpi', label: 'Partenocarpi', api: yieldMakingApi.partenocarpi, color: '#8b5cf6' },
+  { key: 'waterManagement', label: 'Water Management', api: yieldMakingApi.waterManagement, color: '#0ea5e9' },
+  { key: 'bahanOrganik', label: 'Bahan Organik', api: yieldMakingApi.bahanOrganik, color: '#a16207' },
+  { key: 'tbmVegetatif', label: 'TBM Vegetatif', api: yieldMakingApi.tbmVegetatif, color: '#16a34a' },
+];
 
 function polygonLatLngs(referensiPolygon) {
   const geo = safeJsonParse(referensiPolygon);
@@ -54,6 +68,10 @@ export default function PetaEWS() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [showYieldLayer, setShowYieldLayer] = useState(false);
+  const [showDefisiensiLayer, setShowDefisiensiLayer] = useState(false);
+  const [yieldPoints, setYieldPoints] = useState([]);
+  const [defisiensiPoints, setDefisiensiPoints] = useState([]);
 
   const [filters, setFilters] = useState({ severity: '', hpt_id: '', from: '', to: '' });
 
@@ -73,6 +91,30 @@ export default function PetaEWS() {
       .then(setHeatmap)
       .catch(() => setHeatmap([]));
   }, [showHeatmap, filters]);
+
+  useEffect(() => {
+    if (!showYieldLayer) return;
+    const params = { from: filters.from, to: filters.to };
+    Promise.all(YIELD_LAYER_DEFS.map((d) => d.api.list(params).catch(() => [])))
+      .then((results) => {
+        const points = [];
+        results.forEach((rows, idx) => {
+          const def = YIELD_LAYER_DEFS[idx];
+          (rows || []).forEach((r) => {
+            if (r.gps_lat != null && r.gps_lng != null) points.push({ ...r, _layer: def.label, _color: def.color });
+          });
+        });
+        setYieldPoints(points);
+      })
+      .catch(() => setYieldPoints([]));
+  }, [showYieldLayer, filters.from, filters.to]);
+
+  useEffect(() => {
+    if (!showDefisiensiLayer) return;
+    defisiensiHaraApi.list({}).then((rows) => {
+      setDefisiensiPoints((rows || []).filter((r) => r.gps_lat != null && r.gps_lng != null));
+    }).catch(() => setDefisiensiPoints([]));
+  }, [showDefisiensiLayer]);
 
   const filteredBloks = useMemo(() => {
     return bloks.filter((b) => {
@@ -136,6 +178,18 @@ export default function PetaEWS() {
             Tampilkan heatmap deteksi
           </label>
         </Field>
+        <Field label=" ">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 400, paddingTop: 6 }}>
+            <input type="checkbox" checked={showYieldLayer} onChange={(e) => setShowYieldLayer(e.target.checked)} />
+            Layer Yield Making
+          </label>
+        </Field>
+        <Field label=" ">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 400, paddingTop: 6 }}>
+            <input type="checkbox" checked={showDefisiensiLayer} onChange={(e) => setShowDefisiensiLayer(e.target.checked)} />
+            Layer Defisiensi Hara
+          </label>
+        </Field>
       </div>
 
       {uploadOpen && <GeoJsonUploadPanel onDone={() => setUploadOpen(false)} />}
@@ -147,6 +201,18 @@ export default function PetaEWS() {
             {v}
           </span>
         ))}
+        {showYieldLayer && YIELD_LAYER_DEFS.map((d) => (
+          <span className="legend-item" key={d.key}>
+            <span className="legend-dot" style={{ background: d.color }} />
+            {d.label}
+          </span>
+        ))}
+        {showDefisiensiLayer && (
+          <span className="legend-item">
+            <span className="legend-dot" style={{ background: '#db2777' }} />
+            Defisiensi Hara
+          </span>
+        )}
       </div>
 
       <div className="grid-2" style={{ gridTemplateColumns: selectedId ? '1.6fr 1fr' : '1fr' }}>
@@ -189,6 +255,34 @@ export default function PetaEWS() {
                 radius={6}
                 pathOptions={{ color: COLOR_NAME_MAP[{ NORMAL: 'hijau', RINGAN: 'kuning', SEDANG: 'oranye', BERAT: 'merah', CRITICAL: 'merah' }[p.kategori] || 'hijau'], fillOpacity: 0.7 }}
               />
+            ))}
+            {showYieldLayer && yieldPoints.map((p, idx) => (
+              <CircleMarker
+                key={`yp-${idx}`}
+                center={[p.gps_lat, p.gps_lng]}
+                radius={5}
+                pathOptions={{ color: p._color, fillColor: p._color, fillOpacity: 0.75, weight: 1 }}
+              >
+                <Popup>
+                  <strong>{p._layer}</strong><br />
+                  {fmtDate(p.tanggal)} — {p.kategori || 'belum diklasifikasi'}<br />
+                  Blok #{p.blok_id}
+                </Popup>
+              </CircleMarker>
+            ))}
+            {showDefisiensiLayer && defisiensiPoints.map((p, idx) => (
+              <CircleMarker
+                key={`dh-${idx}`}
+                center={[p.gps_lat, p.gps_lng]}
+                radius={5}
+                pathOptions={{ color: '#db2777', fillColor: '#db2777', fillOpacity: 0.75, weight: 1 }}
+              >
+                <Popup>
+                  <strong>Defisiensi Hara — {p.unsur_hara || '-'}</strong><br />
+                  {fmtDate(p.tanggal)} — {p.severity || '-'}<br />
+                  Blok #{p.blok_id}
+                </Popup>
+              </CircleMarker>
             ))}
           </MapContainer>
         </div>

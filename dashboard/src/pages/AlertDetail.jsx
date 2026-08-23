@@ -73,17 +73,22 @@ export default function AlertDetail() {
             </span>
           ))}
         </div>
-        {canChangeAlertStatus(user) ? (
-          alert.status === 'CLOSED' ? (
-            <div className="small-muted">Alert sudah CLOSED.</div>
-          ) : next ? (
-            <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => changeStatus(next)}>
-              Ubah status → {ALERT_STATUS_LABELS[next]}
-            </button>
-          ) : null
-        ) : (
-          <div className="small-muted">Role Anda tidak memiliki akses untuk mengubah status alert.</div>
-        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {canChangeAlertStatus(user) ? (
+            alert.status === 'CLOSED' ? (
+              <div className="small-muted">Alert sudah CLOSED.</div>
+            ) : next ? (
+              <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => changeStatus(next)}>
+                Ubah status → {ALERT_STATUS_LABELS[next]}
+              </button>
+            ) : null
+          ) : (
+            <div className="small-muted">Role Anda tidak memiliki akses untuk mengubah status alert.</div>
+          )}
+          <Link className="btn btn-sm" to={`/action-plans?alert_id=${alert.id}&incident_id=${alert.incident_id || ''}`}>
+            + Buat / Lihat Action Plan
+          </Link>
+        </div>
       </div>
 
       <div className="grid-2">

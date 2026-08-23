@@ -7,7 +7,7 @@ import DataTable from '../components/DataTable';
 import { SeverityBadge, StatusBadge } from '../components/Badges';
 import { fmtDateTime } from '../utils/format';
 
-const STATUS_OPTIONS = ['NEW', 'ACKNOWLEDGED', 'IN_PROGRESS', 'CONTROLLED', 'MONITORING', 'CLOSED'];
+const STATUS_OPTIONS = ['NEW', 'ACKNOWLEDGED', 'ACTION_REQUIRED', 'IN_PROGRESS', 'COMPLETED', 'VERIFIED', 'CLOSED'];
 const SEVERITY_OPTIONS = ['NORMAL', 'RINGAN', 'SEDANG', 'BERAT', 'CRITICAL'];
 
 export default function IncidentManagement() {

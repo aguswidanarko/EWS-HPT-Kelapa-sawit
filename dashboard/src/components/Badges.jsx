@@ -13,9 +13,11 @@ export function SeverityBadge({ severity }) {
 const STATUS_COLORS = {
   NEW: '#2563eb',
   ACKNOWLEDGED: '#7c3aed',
+  ACTION_REQUIRED: '#eab308',
   IN_PROGRESS: '#f97316',
   CONTROLLED: '#0891b2',
   MONITORING: '#0d9488',
+  VERIFIED: '#0d9488',
   CLOSED: '#22a55a',
   DRAFT: '#94a3b8',
   READY_TO_SYNC: '#eab308',
@@ -31,6 +33,13 @@ const STATUS_COLORS = {
   ACTIVE: '#22a55a',
   AKTIF: '#22a55a',
   NONAKTIF: '#94a3b8',
+  // Action Plan status flow (SPEC_V2.md section 2)
+  OPEN: '#2563eb',
+  PLANNED: '#7c3aed',
+  // Schedule operational status (V1 SPEC.md section 7)
+  RENCANA: '#2563eb',
+  BERJALAN: '#f97316',
+  DIBATALKAN: '#94a3b8',
 };
 
 export function StatusBadge({ status }) {

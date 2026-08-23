@@ -125,6 +125,95 @@ export const masterApi = {
     remove: (id) => client.delete(`/master/thresholds/${id}`).then((r) => r.data),
     active: (params) => unwrap(client.get(`/master/thresholds-active${qs(params)}`)),
   },
+  // V2 (SPEC_V2.md section 2): ews_category — umbrella for HPT/YIELD_MAKING/AGRONOMY/DEFISIENSI_HARA.
+  ewsCategories: {
+    list: () => unwrap(client.get('/master/ews-categories')),
+    create: (d) => client.post('/master/ews-categories', d).then((r) => r.data),
+    update: (id, d) => client.put(`/master/ews-categories/${id}`, d).then((r) => r.data),
+    remove: (id) => client.delete(`/master/ews-categories/${id}`).then((r) => r.data),
+  },
+};
+
+// ---- V2: Action Plan (SPEC_V2.md section 2 / section 4 Dashboard) ----
+export const actionPlansApi = {
+  list: (params) => unwrap(client.get(`/action-plans${qs(params)}`)),
+  get: (id) => unwrap(client.get(`/action-plans/${id}`)),
+  create: (d) => client.post('/action-plans', d).then((r) => r.data),
+  update: (id, d) => client.put(`/action-plans/${id}`, d).then((r) => r.data),
+  verify: (id, d) => client.put(`/action-plans/${id}/verify`, d).then((r) => r.data),
+};
+
+// ---- V2: Yield Making (SPEC_V2.md section 2) ----
+function yieldSubApi(path) {
+  return {
+    list: (params) => unwrap(client.get(`/yield-making/${path}${qs(params)}`)),
+    get: (id) => unwrap(client.get(`/yield-making/${path}/${id}`)),
+    create: (d) => client.post(`/yield-making/${path}`, d).then((r) => r.data),
+  };
+}
+export const yieldMakingApi = {
+  partenocarpi: yieldSubApi('partenocarpi'),
+  waterManagement: yieldSubApi('water-management'),
+  bahanOrganik: yieldSubApi('bahan-organik'),
+  tbmVegetatif: yieldSubApi('tbm-vegetatif'),
+};
+
+// ---- V2: Leaf Analysis (Riset) + Defisiensi Hara field findings (SPEC_V2.md section 2) ----
+export const leafAnalysisApi = {
+  list: (params) => unwrap(client.get(`/leaf-analysis${qs(params)}`)),
+  get: (id) => unwrap(client.get(`/leaf-analysis/${id}`)),
+  create: (d) => client.post('/leaf-analysis', d).then((r) => r.data),
+  update: (id, d) => client.put(`/leaf-analysis/${id}`, d).then((r) => r.data),
+};
+
+export const defisiensiHaraApi = {
+  list: (params) => unwrap(client.get(`/defisiensi-hara${qs(params)}`)),
+  get: (id) => unwrap(client.get(`/defisiensi-hara/${id}`)),
+  create: (d) => client.post('/defisiensi-hara', d).then((r) => r.data),
+  update: (id, d) => client.put(`/defisiensi-hara/${id}`, d).then((r) => r.data),
+};
+
+// ---- V2: Scoring / KPI — SKELETON, always carries placeholder:true + disclaimer from backend
+// (SPEC_V2.md section 1 + section 6 acceptance criteria). Do not present as final. ----
+export const scoringApi = {
+  criteria: {
+    list: (params) => client.get(`/scoring/criteria${qs(params)}`).then((r) => r.data),
+    create: (d) => client.post('/scoring/criteria', d).then((r) => r.data),
+    update: (id, d) => client.put(`/scoring/criteria/${id}`, d).then((r) => r.data),
+  },
+  entries: {
+    list: (params) => client.get(`/scoring/entries${qs(params)}`).then((r) => r.data),
+    create: (d) => client.post('/scoring/entries', d).then((r) => r.data),
+  },
+  summary: (params) => client.get(`/scoring/summary${qs(params)}`).then((r) => r.data),
+};
+
+// ---- V2: Rule & Parameter Management — formula + sampling_rule (SPEC_V2.md section 4 Backend) ----
+export const formulasApi = {
+  list: (params) => unwrap(client.get(`/formulas${qs(params)}`)),
+  get: (id) => unwrap(client.get(`/formulas/${id}`)),
+  create: (d) => client.post('/formulas', d).then((r) => r.data),
+  update: (id, d) => client.put(`/formulas/${id}`, d).then((r) => r.data),
+  remove: (id) => client.delete(`/formulas/${id}`).then((r) => r.data),
+  preview: (id, payload) => client.post(`/formulas/${id}/preview`, { payload }).then((r) => r.data),
+};
+
+export const samplingRulesApi = {
+  list: (params) => unwrap(client.get(`/formulas/sampling-rules${qs(params)}`)),
+  create: (d) => client.post('/formulas/sampling-rules', d).then((r) => r.data),
+  update: (id, d) => client.put(`/formulas/sampling-rules/${id}`, d).then((r) => r.data),
+  remove: (id) => client.delete(`/formulas/sampling-rules/${id}`).then((r) => r.data),
+};
+
+// ---- V2: Scheduling Rule CRUD + generate (SPEC_V2.md section 1 item 5) ----
+export const schedulingRulesApi = {
+  list: (params) => unwrap(client.get(`/scheduling-rules${qs(params)}`)),
+  create: (d) => client.post('/scheduling-rules', d).then((r) => r.data),
+  update: (id, d) => client.put(`/scheduling-rules/${id}`, d).then((r) => r.data),
+  remove: (id) => client.delete(`/scheduling-rules/${id}`).then((r) => r.data),
+  generateAll: (body) => unwrap(client.post('/scheduling-rules/generate', body || {})),
+  generateOne: (id, body) => unwrap(client.post(`/scheduling-rules/${id}/generate`, body || {})),
+  overdue: (params) => unwrap(client.get(`/scheduling-rules/overdue${qs(params)}`)),
 };
 
 // ---- Knowledge base ----
