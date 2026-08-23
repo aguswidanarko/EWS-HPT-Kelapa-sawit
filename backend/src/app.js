@@ -40,6 +40,15 @@ app.use('/api/sync-monitoring', require('./routes/syncMonitoring'));
 app.use('/api/notification-rules', require('./routes/notificationRules'));
 app.use('/api/audit-log', require('./routes/auditLog'));
 
+// ===================== V2 routes (SPEC_V2.md section 4 Backend) =====================
+app.use('/api/action-plans', require('./routes/actionPlans'));
+app.use('/api/yield-making', require('./routes/yieldMaking'));
+app.use('/api/leaf-analysis', require('./routes/leafAnalysis'));
+app.use('/api/defisiensi-hara', require('./routes/defisiensiHara'));
+app.use('/api/scoring', require('./routes/scoring'));
+app.use('/api/scheduling-rules', require('./routes/schedulingRules'));
+app.use('/api/formulas', require('./routes/formulas'));
+
 app.use((req, res) => res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` }));
 app.use(errorHandler);
 

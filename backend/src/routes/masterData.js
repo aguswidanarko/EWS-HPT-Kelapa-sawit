@@ -136,8 +136,16 @@ router.use(
     allowedFields: [
       'code', 'name', 'nama_lokal', 'kategori', 'status_aktif', 'deskripsi', 'gejala',
       'metode_deteksi', 'metode_sensus', 'satuan', 'threshold_default', 'panduan_md',
+      // V2 (SPEC_V2.md section 2): "hpt" reused as the generic EWS indicator table.
+      'indicator_type', 'category_id',
     ],
   })
+);
+
+// ---------------------------------------------------------------- EWS Category (V2)
+router.use(
+  '/ews-categories',
+  crud('ews_category', { writeRoles: ['ADMIN', 'RND_FOD'], allowedFields: ['code', 'name'] })
 );
 
 // ---------------------------------------------------------------- Species

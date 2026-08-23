@@ -14,6 +14,12 @@ const EFFECTIVE = '2026-01-01';
 
 function reset() {
   const tables = [
+    // ---- V2 tables first (some reference V1 tables/each other; foreign_keys is OFF during
+    // reset so order isn't strictly required, but kept dependency-safe for readability) ----
+    'scoring_entry', 'scoring_criteria', 'defisiensi_hara_temuan', 'leaf_analysis',
+    'tbm_vegetatif', 'bahan_organik', 'water_management', 'yield_partenocarpi',
+    'action_plan', 'rule_version', 'formula', 'sampling_rule', 'scheduling_rule', 'ews_category',
+    // ---- V1 tables (unchanged order/content from V1 seed.js) ----
     'notification', 'alert', 'mortality', 'treatment', 'sensus', 'detection', 'incident',
     'schedule', 'pic', 'photo', 'gps', 'audit_log', 'sync_log', 'notification_rule',
     'geojson_layer', 'import_log', 'knowledge_base', 'threshold', 'species', 'hpt',
@@ -33,14 +39,19 @@ function main() {
   reset();
 
   // ---------------------------------------------------------------- ROLES
+  // V1 roles unchanged, plus V2 roles (SPEC_V2.md section 1 item 7: SUPER_ADMIN, RISET,
+  // VIEWER_MANAGEMENT added on top -- no V1 role removed/renamed).
   const roles = [
     ['ADMIN', 'Administrator'],
+    ['SUPER_ADMIN', 'Super Admin'],
     ['RND_FOD', 'R&D / FOD'],
     ['MANAGER', 'Manager'],
     ['ASKEP_ASISTEN', 'Askep / Asisten'],
     ['PETUGAS_DETEKSI', 'Petugas Deteksi'],
     ['PETUGAS_SENSUS', 'Petugas Sensus'],
     ['PETUGAS_PENGENDALIAN', 'Petugas Pengendalian'],
+    ['RISET', 'Riset (Leaf Analysis / Defisiensi Hara)'],
+    ['VIEWER_MANAGEMENT', 'Viewer / Management (read-only)'],
   ];
   const insRole = db.prepare('INSERT INTO role (code, name) VALUES (?, ?)');
   const roleId = {};
@@ -195,6 +206,10 @@ function main() {
     { key: 'deteksi', name: 'Dedi Petugas Deteksi', email: 'deteksi@ews.local', phone: '628110000005', role_id: roleId.PETUGAS_DETEKSI, estate_id: estateId, afdeling_id: afd1, area_kerja: 'Afdeling I - Blok B01,B02' },
     { key: 'sensus', name: 'Siti Petugas Sensus', email: 'sensus@ews.local', phone: '628110000006', role_id: roleId.PETUGAS_SENSUS, estate_id: estateId, afdeling_id: afd1, area_kerja: 'Afdeling I - Blok B01,B02' },
     { key: 'pengendalian', name: 'Parjo Petugas Pengendalian', email: 'pengendalian@ews.local', phone: '628110000007', role_id: roleId.PETUGAS_PENGENDALIAN, estate_id: estateId, afdeling_id: afd2, area_kerja: 'Afdeling II' },
+    // ---- V2 demo users (SPEC_V2.md section 1 item 7 new roles) ----
+    { key: 'superadmin', name: 'Sinta Super Admin', email: 'superadmin@ews.local', phone: '628110000008', role_id: roleId.SUPER_ADMIN, estate_id: null, afdeling_id: null, area_kerja: 'Seluruh Estate' },
+    { key: 'riset', name: 'Rudi Riset', email: 'riset@ews.local', phone: '628110000009', role_id: roleId.RISET, estate_id: null, afdeling_id: null, area_kerja: 'Seluruh Estate' },
+    { key: 'viewer', name: 'Vino Viewer Management', email: 'viewer@ews.local', phone: '628110000010', role_id: roleId.VIEWER_MANAGEMENT, estate_id: null, afdeling_id: null, area_kerja: 'Seluruh Estate' },
   ];
   for (const u of userDefs) userId[u.key] = insUser.run({ ...u, password_hash: pw }).lastInsertRowid;
 
@@ -246,6 +261,233 @@ function main() {
       uploaded_by: userId.rnd,
     });
   }
+
+  // =================================================================================================
+  // ============================ V2 EXTENSIONS (SPEC_V2.md) =======================================
+  // =================================================================================================
+  // Everything below is ADDITIVE on top of the V1 seed above (nothing above this line changed in
+  // meaning). See SPEC_V2.md section 5 for the exact threshold numbers used, and the task's final
+  // report for every judgment call made where the FR/BRD text didn't map cleanly onto the
+  // yield_partenocarpi/water_management/bahan_organik/tbm_vegetatif table's fixed column set.
+
+  // ---------------------------------------------------------------- EWS CATEGORY
+  const insCategory = db.prepare('INSERT INTO ews_category (code, name) VALUES (?, ?)');
+  const categoryId = {};
+  for (const [code, name] of [
+    ['HPT', 'Hama & Penyakit Tanaman'],
+    ['YIELD_MAKING', 'Yield Making'],
+    ['AGRONOMY', 'Agronomy'],
+    ['DEFISIENSI_HARA', 'Defisiensi Hara'],
+  ]) {
+    categoryId[code] = insCategory.run(code, name).lastInsertRowid;
+  }
+
+  // Backfill category_id on the 5 V1 HPT rows (indicator_type already defaults to 'HPT' via the
+  // ALTER TABLE ... DEFAULT 'HPT' migration in db.js, nothing to change there).
+  const updHptCategory = db.prepare('UPDATE hpt SET category_id=? WHERE id=?');
+  for (const code of ['UPDKS', 'TIKUS', 'ORYCTES', 'RAYAP', 'GANODERMA']) {
+    updHptCategory.run(categoryId.HPT, hptId[code]);
+  }
+
+  // ---------------------------------------------------------------- NEW INDICATORS (hpt table reused)
+  const insIndicator = db.prepare(
+    `INSERT INTO hpt (code, name, nama_lokal, kategori, status_aktif, deskripsi, gejala, metode_deteksi, metode_sensus, satuan, threshold_default, panduan_md, indicator_type, category_id)
+     VALUES (@code, @name, @nama_lokal, @kategori, 1, @deskripsi, @gejala, @metode_deteksi, @metode_sensus, @satuan, @threshold_default, @panduan_md, @indicator_type, @category_id)`
+  );
+  const indicatorDefs = [
+    {
+      code: 'PARTENOCARPI', name: 'Partenocarpi / Elaeidobius', nama_lokal: 'Partenocarpi',
+      kategori: 'YIELD_MAKING', deskripsi: 'Monitoring fruit set / penyerbukan (Elaeidobius kamerunicus) dan abnormal bunch',
+      gejala: 'Bunga jantan antesis rendah, populasi EK rendah, abnormal bunch tinggi',
+      metode_deteksi: 'Pengamatan tandan bunga + curah hujan', metode_sensus: 'BARIS_SAMPEL', satuan: 'boolean',
+      threshold_default: 'Lihat tabel THRESHOLD (kombinasi curah hujan/populasi EK/abnormal bunch, FR)',
+      panduan_md: '# Partenocarpi/Elaeidobius\nSensus minimal 6 baris/blok. EWS aktif jika populasi EK<20.000 ekor/ha DAN curah hujan>270mm/bulan DAN >20mm/periode pagi-siang, ATAU abnormal bunch harian >1%.',
+      indicator_type: 'YIELD_MAKING', category_id: categoryId.YIELD_MAKING,
+    },
+    {
+      code: 'WATER_MANAGEMENT', name: 'Water Management', nama_lokal: 'Manajemen Air',
+      kategori: 'AGRONOMY', deskripsi: 'Monitoring level air parit', gejala: 'Level air di luar target 40-60cm, genangan berkepanjangan',
+      metode_deteksi: 'Pengukuran level air per titik parit', metode_sensus: 'KUALITATIF', satuan: 'cm',
+      threshold_default: 'Target normal 40-60 cm di bawah permukaan tanah; alert jika <40cm',
+      panduan_md: '# Water Management\nSensus level air paling lambat tanggal 25 tiap bulan, per titik parit.',
+      indicator_type: 'YIELD_MAKING', category_id: categoryId.YIELD_MAKING,
+    },
+    {
+      code: 'BAHAN_ORGANIK', name: 'Bahan Organik (Area Pasir)', nama_lokal: 'Bahan Organik',
+      kategori: 'AGRONOMY', deskripsi: 'Monitoring kondisi daun menguning pada area pasir', gejala: 'Daun menguning >5% (TM), TBM di bawah baseline normal',
+      metode_deteksi: 'Pengamatan visual daun', metode_sensus: 'BARIS_SAMPEL', satuan: '%',
+      threshold_default: 'Daun menguning >5% (TM) -- alert',
+      panduan_md: '# Bahan Organik\nPer blok area pasir. TM: daun menguning >5% -> alert. TBM: dibandingkan baseline TBM normal (kualitatif, lihat comparison_result).',
+      indicator_type: 'YIELD_MAKING', category_id: categoryId.YIELD_MAKING,
+    },
+    {
+      code: 'TBM_VEGETATIF', name: 'TBM Sehat / Standar Vegetatif', nama_lokal: 'TBM Vegetatif',
+      kategori: 'AGRONOMY', deskripsi: 'Evaluasi pertumbuhan vegetatif TBM terhadap standar umur', gejala: 'Pertumbuhan (panjang pelepah/jumlah pelepah/LAI) di bawah standar umur',
+      metode_deteksi: 'Pengukuran pelepah + LAI', metode_sensus: 'BARIS_SAMPEL', satuan: 'skala',
+      threshold_default: 'Di bawah standar umur -> rekomendasi perbaikan (FR tidak memberi angka standar numerik per umur, lihat hasil_evaluasi)',
+      panduan_md: '# TBM Vegetatif\nMinimal setiap 3 bulan, sampel pokok 1%. Target produksi acuan (bukan alert threshold): TBM2=10 ton/Ha, TBM3=20 ton/Ha, TM1=30 ton/Ha, TM3=40 ton/Ha.',
+      indicator_type: 'YIELD_MAKING', category_id: categoryId.YIELD_MAKING,
+    },
+    {
+      code: 'DEFISIENSI_HARA', name: 'Defisiensi Hara', nama_lokal: 'Defisiensi Hara',
+      kategori: 'DEFISIENSI_HARA', deskripsi: 'Defisiensi unsur hara dari leaf (foliar) analysis', gejala: 'Gejala defisiensi per unsur hara (N/P/K/Mg/dst, lihat panduan)',
+      metode_deteksi: 'Leaf analysis (Riset) + temuan lapangan (Mandor/Petugas)', metode_sensus: 'KUALITATIF', satuan: 'skala',
+      threshold_default: 'Severity RINGAN/SEDANG/BERAT dari leaf analysis (kualitatif, expert judgment Riset -- tidak ada angka numerik baku di FR)',
+      panduan_md: '# Defisiensi Hara\nleaf_analysis (Riset) menetapkan unsur_hara + severity; defisiensi_hara_temuan mencatat temuan lapangan yang mengacu ke leaf_analysis tsb.',
+      indicator_type: 'DEFISIENSI_HARA', category_id: categoryId.DEFISIENSI_HARA,
+    },
+  ];
+  for (const ind of indicatorDefs) hptId[ind.code] = insIndicator.run(ind).lastInsertRowid;
+
+  // ---------------------------------------------------------------- FORMULA (generic rule engine)
+  const insFormula = db.prepare(
+    `INSERT INTO formula (hpt_id, formula_type, context, expression_json, unit, description, active)
+     VALUES (@hpt_id, @formula_type, @context, @expression_json, @unit, @description, 1)`
+  );
+  function formula(hpt_id, formula_type, context, expr, unit, description) {
+    insFormula.run({ hpt_id, formula_type, context, expression_json: JSON.stringify(expr), unit, description });
+  }
+
+  // ---- 5 legacy HPT, re-expressed as data (SPEC_V2.md section 3). Mathematically IDENTICAL to
+  // the hard-coded functions in services/sensusEngines.js -- see services/ruleEngine.js header
+  // comment + this task's regression report for the before/after PISP1 import proof. context
+  // 'SENSUS' matches services/sensusEngines.js's computeByHptCode() lookup.
+  formula(hptId.UPDKS, 'PERCENTAGE', 'SENSUS',
+    { numerator_fields: ['ulat_hidup_total'], denominator_field: 'jumlah_pelepah_diamati', multiply: 1, unit: 'ekor/pelepah', require_denominator_gt_zero: true },
+    'ekor/pelepah', 'UPDKS: ulat_hidup_total / jumlah_pelepah_diamati (identik dengan V1 computeUPDKS)');
+  formula(hptId.TIKUS, 'PERCENTAGE', 'SENSUS',
+    { numerator_fields: ['serangan_baru', 'serangan_lama'], denominator_field: 'jumlah_sampel', multiply: 100, unit: '%', require_denominator_gt_zero: true },
+    '%', 'Tikus: (serangan_baru+serangan_lama)/jumlah_sampel*100 (identik dengan V1 computeTikus)');
+  formula(hptId.ORYCTES, 'PERCENTAGE', 'SENSUS',
+    { numerator_fields: ['jumlah_pokok_terserang'], denominator_field: 'jumlah_pokok_diamati', multiply: 100, unit: '%', require_denominator_gt_zero: true },
+    '%', 'Oryctes: jumlah_pokok_terserang/jumlah_pokok_diamati*100 (identik dengan V1 computeOryctes)');
+  formula(hptId.RAYAP, 'PERCENTAGE', 'SENSUS',
+    { numerator_fields: ['jumlah_pokok_terserang'], denominator_field: 'jumlah_pokok_diamati', multiply: 100, unit: '%', zero_denominator_fallback: 'BINARY_100_OR_0', forced_when_numerator_gt_zero: true },
+    '%', 'Rayap: ambang ekonomi 0% - identik dengan V1 computeRayap (termasuk forced_kandidat_pengendalian)');
+  formula(hptId.GANODERMA, 'CATEGORICAL_CONDITION', 'SENSUS',
+    { field: 'status_serangan', fallback_field: 'indikasi', default: 'TIDAK_ADA', unit: 'skala',
+      scale: { TIDAK_ADA: 0, INDIKASI_AWAL: 1, TERINFEKSI_RINGAN: 2, TERINFEKSI_SEDANG: 3, TERINFEKSI_BERAT: 4 } },
+    'skala', 'Ganoderma: skala ordinal (identik dengan V1 GANODERMA_SCALE)');
+
+  // ---- 4 new Yield Making indicators + Defisiensi Hara. context 'YIELD_MAKING' matches
+  // routes/yieldMaking.js's computeIndicatorResult() call.
+  // JUDGMENT CALL (documented, see task report): the FR's Partenocarpi condition also references
+  // "bunga jantan antesis < 4 tandan/ha", but SPEC_V2.md section 2's yield_partenocarpi column
+  // list has no such field -- only the 3 conditions below (populasi_ek/rainfall_mm/
+  // indikator_hujan_pagi) plus the separate abnormal_bunch_pct>1% rule can be evaluated from the
+  // table as specified. Not silently invented as a DB column.
+  formula(hptId.PARTENOCARPI, 'AND_OR', 'YIELD_MAKING',
+    { op: 'OR', conditions: [
+        { op: 'AND', conditions: [
+            { field: 'populasi_ek', operator: '<', value: 20000 },
+            { field: 'rainfall_mm', operator: '>', value: 270 },
+            { field: 'indikator_hujan_pagi', operator: '>', value: 20 },
+          ] },
+        { field: 'abnormal_bunch_pct', operator: '>', value: 1 },
+      ] },
+    'boolean', 'FR: (populasi EK<20.000/ha DAN curah hujan>270mm/bulan DAN >20mm/periode pagi-siang) ATAU abnormal bunch harian>1%. "bunga jantan antesis<4 tandan/ha" tidak ada kolomnya di schema V2 -- lihat catatan judgment call.');
+  formula(hptId.WATER_MANAGEMENT, 'THRESHOLD', 'YIELD_MAKING',
+    { field: 'water_level_cm', unit: 'cm' },
+    'cm', 'FR: target normal 40-60cm di bawah permukaan tanah, alert jika <40cm. flooding_duration_hari>20hari belum digabung ke formula ini (judgment call, lihat laporan).');
+  formula(hptId.BAHAN_ORGANIK, 'PERCENTAGE', 'YIELD_MAKING',
+    { numerator_fields: ['yellowing_count'], denominator_field: 'total_sample', multiply: 100, unit: '%' },
+    '%', 'FR: daun menguning >5% (TM) -> alert. Perbandingan TBM ke baseline (comparison_result) tetap kualitatif/manual.');
+  formula(hptId.TBM_VEGETATIF, 'CATEGORICAL_CONDITION', 'YIELD_MAKING',
+    { field: 'hasil_evaluasi', default: 'SESUAI_STANDAR', unit: 'skala', scale: { SESUAI_STANDAR: 0, DI_BAWAH_STANDAR: 1 } },
+    'skala', 'FR tidak memberi angka standar pertumbuhan numerik per umur -- klasifikasi memakai hasil_evaluasi kualitatif (SESUAI_STANDAR/DI_BAWAH_STANDAR), bukan panjang_pelepah_cm/jumlah_pelepah/lai langsung (judgment call).');
+  formula(hptId.DEFISIENSI_HARA, 'CATEGORICAL_CONDITION', 'DEFISIENSI_HARA',
+    { field: 'severity', default: 'TIDAK_ADA', unit: 'skala', scale: { TIDAK_ADA: 0, RINGAN: 1, SEDANG: 2, BERAT: 3 } },
+    'skala', 'Skeleton formula untuk severity leaf_analysis -- belum dipanggil otomatis oleh routes/leafAnalysis.js atau defisiensiHara.js (severity tetap expert judgment Riset), disediakan untuk Rule & Parameter Management.');
+
+  // ---------------------------------------------------------------- THRESHOLD (V2 indicators, exact FR numbers -- SPEC_V2.md section 5)
+  thr(hptId.PARTENOCARPI, null, 'SEMUA', 'NORMAL', 0, 0, 'boolean', 'Kondisi mendukung fruit set normal, lanjutkan monitoring bulanan');
+  thr(hptId.PARTENOCARPI, null, 'SEMUA', 'BERAT', 1, 1, 'boolean', 'Risiko penurunan fruit set (populasi EK<20.000/ha & curah hujan>270mm/bulan & >20mm pagi-siang, atau abnormal bunch>1%) -- evaluasi bantuan penyerbukan');
+
+  thr(hptId.WATER_MANAGEMENT, null, 'SEMUA', 'NORMAL', 40, null, 'cm', 'Level air sesuai/di atas target normal 40-60 cm di bawah permukaan tanah');
+  thr(hptId.WATER_MANAGEMENT, null, 'SEMUA', 'BERAT', null, 39.99, 'cm', 'Level air < 40 cm -- risiko kekeringan akar, evaluasi water management segera (FR)');
+
+  thr(hptId.BAHAN_ORGANIK, null, 'TM', 'NORMAL', 0, 5, '%', 'Daun menguning <=5% (TM), kondisi normal');
+  thr(hptId.BAHAN_ORGANIK, null, 'TM', 'BERAT', 5.01, null, '%', 'Daun menguning >5% (TM) -- evaluasi bahan organik/pemupukan (FR)');
+  thr(hptId.BAHAN_ORGANIK, null, 'SEMUA', 'NORMAL', 0, 5, '%', 'Daun menguning <=5%, kondisi normal (fallback fase selain TM)');
+  thr(hptId.BAHAN_ORGANIK, null, 'SEMUA', 'BERAT', 5.01, null, '%', 'Daun menguning >5% -- evaluasi bahan organik/pemupukan');
+
+  thr(hptId.TBM_VEGETATIF, null, 'SEMUA', 'NORMAL', 0, 0, 'skala', 'Pertumbuhan sesuai standar umur');
+  thr(hptId.TBM_VEGETATIF, null, 'SEMUA', 'BERAT', 1, 1, 'skala', 'Pertumbuhan di bawah standar umur -- rekomendasi perbaikan (FR)');
+
+  thr(hptId.DEFISIENSI_HARA, null, 'SEMUA', 'NORMAL', 0, 0, 'skala', 'Tidak ada indikasi defisiensi');
+  thr(hptId.DEFISIENSI_HARA, null, 'SEMUA', 'RINGAN', 1, 1, 'skala', 'Defisiensi ringan');
+  thr(hptId.DEFISIENSI_HARA, null, 'SEMUA', 'SEDANG', 2, 2, 'skala', 'Defisiensi sedang');
+  thr(hptId.DEFISIENSI_HARA, null, 'SEMUA', 'BERAT', 3, 3, 'skala', 'Defisiensi berat -- tindak lanjut segera');
+
+  // ---------------------------------------------------------------- SAMPLING_RULE (SPEC_V2.md section 5 "Scope sensus" column)
+  const insSamplingRule = db.prepare(
+    `INSERT INTO sampling_rule (hpt_id, method, row_start, row_interval, plant_start, plant_interval, minimum_sample, unit_scope, description, active)
+     VALUES (@hpt_id, @method, @row_start, @row_interval, @plant_start, @plant_interval, @minimum_sample, @unit_scope, @description, 1)`
+  );
+  function samplingRule(hpt_id, opts) {
+    insSamplingRule.run({
+      hpt_id, method: null, row_start: null, row_interval: null, plant_start: null, plant_interval: null,
+      minimum_sample: null, unit_scope: null, description: null, ...opts,
+    });
+  }
+  samplingRule(hptId.UPDKS, { method: 'BARIS_SAMPEL', row_start: 3, row_interval: 10, minimum_sample: 0.01, unit_scope: 'BARIS_SAMPEL', description: 'Setiap blok terdeteksi, sampel pokok 1% (baris & pokok sesuai SOP)' });
+  samplingRule(hptId.TIKUS, { method: 'BARIS_SAMPEL', row_start: 3, row_interval: 10, minimum_sample: 24, unit_scope: 'BARIS_SAMPEL', description: 'Setiap blok, +-24 pokok/blok' });
+  samplingRule(hptId.ORYCTES, { method: 'GAWANGAN', minimum_sample: 12, unit_scope: 'GAWANGAN', description: '12 gawangan/blok atau setiap 10 gawang' });
+  samplingRule(hptId.RAYAP, { method: 'GRID', row_start: 3, row_interval: 20, plant_start: 3, plant_interval: 10, unit_scope: 'SELURUH_POKOK', description: 'Setiap blok, semua pokok (grid baris 3,23,43,63.. x pokok 3,13,23,33..)' });
+  samplingRule(hptId.GANODERMA, { method: 'SELURUH_POKOK', unit_scope: 'SELURUH_POKOK', description: 'Setiap blok, semua pokok' });
+  samplingRule(hptId.PARTENOCARPI, { method: 'BARIS_SAMPEL', minimum_sample: 6, unit_scope: 'BARIS_SAMPEL', description: 'Minimal 6 baris sensus/blok atau representasi total pokok/ha' });
+  samplingRule(hptId.WATER_MANAGEMENT, { method: 'PER_TITIK_PARIT', unit_scope: 'GAWANGAN', description: 'Per titik parit (unit_scope enum tidak punya nilai "per titik" persis -- GAWANGAN dipakai sbg padanan terdekat, lihat method untuk nama asli)' });
+  samplingRule(hptId.BAHAN_ORGANIK, { method: 'BARIS_SAMPEL', unit_scope: 'BARIS_SAMPEL', description: 'Per blok area pasir' });
+  samplingRule(hptId.TBM_VEGETATIF, { method: 'BARIS_SAMPEL', minimum_sample: 0.01, unit_scope: 'BARIS_SAMPEL', description: 'Setiap blok terdeteksi, sampel pokok 1%' });
+
+  // ---------------------------------------------------------------- SCHEDULING_RULE (SPEC_V2.md section 5 "Interval" column)
+  const insSchedulingRule = db.prepare(
+    `INSERT INTO scheduling_rule (hpt_id, jenis_kegiatan, interval_type, interval_value, interval_unit, based_on, active)
+     VALUES (@hpt_id, @jenis_kegiatan, @interval_type, @interval_value, @interval_unit, @based_on, 1)`
+  );
+  function schedulingRule(hpt_id, opts) {
+    insSchedulingRule.run({ hpt_id, jenis_kegiatan: 'SENSUS', interval_type: 'MONTHLY', interval_value: 1, interval_unit: 'MONTH', based_on: 'LAST_INSPECTION', ...opts });
+  }
+  // Deteksi HPT tahap awal, semua 5 jenis HPT: rotasi 2 minggu (2x/bulan), kebun non-endemik.
+  for (const code of ['UPDKS', 'TIKUS', 'ORYCTES', 'RAYAP', 'GANODERMA']) {
+    schedulingRule(hptId[code], { jenis_kegiatan: 'DETEKSI', interval_type: 'BIWEEKLY', interval_value: 1 });
+  }
+  schedulingRule(hptId.UPDKS, { jenis_kegiatan: 'SENSUS', interval_type: 'MONTHLY', interval_value: 1 });
+  schedulingRule(hptId.TIKUS, { jenis_kegiatan: 'SENSUS', interval_type: 'MONTHLY', interval_value: 1 });
+  schedulingRule(hptId.ORYCTES, { jenis_kegiatan: 'SENSUS', interval_type: 'MONTHLY', interval_value: 1 });
+  schedulingRule(hptId.RAYAP, { jenis_kegiatan: 'SENSUS', interval_type: 'CUSTOM', interval_value: 2, interval_unit: 'MONTH' });
+  // Ganoderma: semester (endemik area gambut) seeded as the default cadence. FR also mentions
+  // "1x/tahun (non-endemik)" but blok has no endemik/non-endemik flag in the schema to key a
+  // second rule off of -- documented judgment call, only the semester cadence is seeded.
+  schedulingRule(hptId.GANODERMA, { jenis_kegiatan: 'SENSUS', interval_type: 'CUSTOM', interval_value: 6, interval_unit: 'MONTH' });
+  schedulingRule(hptId.PARTENOCARPI, { jenis_kegiatan: 'SENSUS', interval_type: 'MONTHLY', interval_value: 1 });
+  // Water Management: "paling lambat tgl 25/bulan" read as a fixed monthly deadline, not a
+  // rolling last-inspection interval.
+  schedulingRule(hptId.WATER_MANAGEMENT, { jenis_kegiatan: 'SENSUS', interval_type: 'MONTHLY', interval_value: 1, based_on: 'FIXED_DATE' });
+  // Bahan Organik: FR's Interval column is "--" (no number given) -- NOT seeded, to avoid
+  // inventing a cadence the source document doesn't specify.
+  schedulingRule(hptId.TBM_VEGETATIF, { jenis_kegiatan: 'SENSUS', interval_type: 'CUSTOM', interval_value: 3, interval_unit: 'MONTH' });
+
+  // ---------------------------------------------------------------- SCORING CRITERIA (SKELETON -- see routes/scoring.js header)
+  const insScoringCriteria = db.prepare(
+    `INSERT INTO scoring_criteria (side, code, name, max_poin, description, active) VALUES (@side, @code, @name, @max_poin, @description, 1)`
+  );
+  for (let i = 1; i <= 5; i++) {
+    insScoringCriteria.run({
+      side: 'RND', code: `RND_TBD_${i}`, name: `[PLACEHOLDER] Kriteria R&D #${i} - TBD`, max_poin: 10,
+      description: 'Rincian kriteria resmi belum tersedia di SPEC_V2.md/FR/BRD manapun -- placeholder struktur skeleton, JANGAN dipakai sebagai rubrik final. Edit dari Master Data > Scoring Criteria setelah kriteria asli dikonfirmasi.',
+    });
+  }
+  for (let i = 1; i <= 5; i++) {
+    insScoringCriteria.run({
+      side: 'TIM_OPERASIONAL', code: `TIM_OPS_TBD_${i}`, name: `[PLACEHOLDER] Kriteria Tim Operasional #${i} - TBD`, max_poin: 10,
+      description: 'Rincian kriteria resmi belum tersedia di SPEC_V2.md/FR/BRD manapun -- placeholder struktur skeleton, JANGAN dipakai sebagai rubrik final. Edit dari Master Data > Scoring Criteria setelah kriteria asli dikonfirmasi.',
+    });
+  }
+  insScoringCriteria.run({
+    side: 'BONUS', code: 'BONUS_TBD', name: '[PLACEHOLDER] Bonus - TBD', max_poin: 10,
+    description: 'Placeholder bonus (max 10 poin per SPEC_V2.md section 2) -- rincian kriteria bonus resmi belum tersedia.',
+  });
 
   // ---------------------------------------------------------------- SCHEDULE
   const insSched = db.prepare(

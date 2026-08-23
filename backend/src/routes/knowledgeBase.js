@@ -3,6 +3,8 @@
 
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const db = require('../db/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -28,6 +30,10 @@ router.get(
     if (req.query.status_aktif !== undefined) {
       clauses.push('status_aktif = @status_aktif');
       params.status_aktif = req.query.status_aktif;
+    }
+    if (req.query.publish_status !== undefined) {
+      clauses.push('publish_status = @publish_status');
+      params.publish_status = req.query.publish_status;
     }
     let sql = 'SELECT * FROM knowledge_base';
     if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
@@ -55,19 +61,32 @@ router.get(
   })
 );
 
+function fileChecksum(absPath) {
+  try {
+    const buf = fs.readFileSync(absPath);
+    return crypto.createHash('sha256').update(buf).digest('hex');
+  } catch (e) {
+    return null;
+  }
+}
+
 router.post(
   '/',
   requireRole('ADMIN', 'RND_FOD'),
   uploadKnowledgeBase.single('file'),
   asyncHandler(async (req, res) => {
-    const { hpt_id, kategori, judul, versi, tanggal_berlaku, status_aktif } = req.body;
+    const { hpt_id, kategori, judul, versi, tanggal_berlaku, status_aktif, publish_status } = req.body;
     if (!judul) return res.status(400).json({ error: 'judul wajib diisi' });
     const file_path = req.file ? path.relative(process.cwd(), req.file.path) : null;
     const file_type = req.file ? req.file.mimetype : null;
+    const checksum = req.file ? fileChecksum(req.file.path) : null;
+    // publish_status (SPEC_V2.md section 1 item 8): DRAFT/PUBLISHED/ARCHIVED, independent of
+    // status_aktif. Defaults to PUBLISHED to match V1 behavior (every V1 upload was immediately
+    // usable) unless the caller explicitly asks for a draft.
     const info = db
       .prepare(
-        `INSERT INTO knowledge_base (hpt_id, kategori, judul, versi, tanggal_berlaku, status_aktif, file_path, file_type, uploaded_by)
-         VALUES (@hpt_id, @kategori, @judul, @versi, @tanggal_berlaku, @status_aktif, @file_path, @file_type, @uploaded_by)`
+        `INSERT INTO knowledge_base (hpt_id, kategori, judul, versi, tanggal_berlaku, status_aktif, file_path, file_type, uploaded_by, publish_status, checksum)
+         VALUES (@hpt_id, @kategori, @judul, @versi, @tanggal_berlaku, @status_aktif, @file_path, @file_type, @uploaded_by, @publish_status, @checksum)`
       )
       .run({
         hpt_id: hpt_id || null,
@@ -79,6 +98,8 @@ router.post(
         file_path,
         file_type,
         uploaded_by: req.user.id,
+        publish_status: publish_status || 'PUBLISHED',
+        checksum,
       });
     const row = db.prepare('SELECT * FROM knowledge_base WHERE id=?').get(info.lastInsertRowid);
     auditFromReq(req, { aktivitas: 'CREATE_KNOWLEDGE_BASE', after: row });
@@ -97,11 +118,12 @@ router.post(
     if (!prev) return res.status(404).json({ error: 'Not found' });
     const file_path = req.file ? path.relative(process.cwd(), req.file.path) : prev.file_path;
     const file_type = req.file ? req.file.mimetype : prev.file_type;
+    const checksum = req.file ? fileChecksum(req.file.path) : prev.checksum;
     db.prepare('UPDATE knowledge_base SET status_aktif = 0 WHERE id = ?').run(prev.id);
     const info = db
       .prepare(
-        `INSERT INTO knowledge_base (hpt_id, kategori, judul, versi, tanggal_berlaku, status_aktif, file_path, file_type, uploaded_by)
-         VALUES (@hpt_id, @kategori, @judul, @versi, @tanggal_berlaku, 1, @file_path, @file_type, @uploaded_by)`
+        `INSERT INTO knowledge_base (hpt_id, kategori, judul, versi, tanggal_berlaku, status_aktif, file_path, file_type, uploaded_by, publish_status, checksum)
+         VALUES (@hpt_id, @kategori, @judul, @versi, @tanggal_berlaku, 1, @file_path, @file_type, @uploaded_by, @publish_status, @checksum)`
       )
       .run({
         hpt_id: prev.hpt_id,
@@ -112,6 +134,8 @@ router.post(
         file_path,
         file_type,
         uploaded_by: req.user.id,
+        publish_status: req.body.publish_status || 'PUBLISHED',
+        checksum,
       });
     const row = db.prepare('SELECT * FROM knowledge_base WHERE id=?').get(info.lastInsertRowid);
     auditFromReq(req, { aktivitas: 'NEW_VERSION_KNOWLEDGE_BASE', before: prev, after: row });
@@ -125,7 +149,7 @@ router.put(
   asyncHandler(async (req, res) => {
     const before = db.prepare('SELECT * FROM knowledge_base WHERE id=?').get(req.params.id);
     if (!before) return res.status(404).json({ error: 'Not found' });
-    const fields = ['hpt_id', 'kategori', 'judul', 'versi', 'tanggal_berlaku', 'status_aktif'].filter(
+    const fields = ['hpt_id', 'kategori', 'judul', 'versi', 'tanggal_berlaku', 'status_aktif', 'publish_status'].filter(
       (f) => req.body[f] !== undefined
     );
     if (fields.length) {
@@ -137,6 +161,24 @@ router.put(
     }
     const after = db.prepare('SELECT * FROM knowledge_base WHERE id=?').get(req.params.id);
     auditFromReq(req, { aktivitas: 'UPDATE_KNOWLEDGE_BASE', before, after });
+    res.json({ data: after });
+  })
+);
+
+// PUT /:id/publish-status -> explicit publish workflow transition (DRAFT/PUBLISHED/ARCHIVED).
+router.put(
+  '/:id/publish-status',
+  requireRole('ADMIN', 'RND_FOD'),
+  asyncHandler(async (req, res) => {
+    const { publish_status } = req.body;
+    if (!['DRAFT', 'PUBLISHED', 'ARCHIVED'].includes(publish_status)) {
+      return res.status(400).json({ error: 'publish_status harus salah satu dari DRAFT, PUBLISHED, ARCHIVED' });
+    }
+    const before = db.prepare('SELECT * FROM knowledge_base WHERE id=?').get(req.params.id);
+    if (!before) return res.status(404).json({ error: 'Not found' });
+    db.prepare(`UPDATE knowledge_base SET publish_status=?, updated_at=datetime('now') WHERE id=?`).run(publish_status, req.params.id);
+    const after = db.prepare('SELECT * FROM knowledge_base WHERE id=?').get(req.params.id);
+    auditFromReq(req, { aktivitas: 'PUBLISH_STATUS_KNOWLEDGE_BASE', before, after });
     res.json({ data: after });
   })
 );

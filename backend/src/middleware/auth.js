@@ -49,11 +49,12 @@ function requireAuth(req, res, next) {
   next();
 }
 
-/** Restricts a route to a set of role codes. ADMIN always allowed. */
+/** Restricts a route to a set of role codes. ADMIN and SUPER_ADMIN always allowed (SPEC_V2.md
+ *  section 1 item 7: SUPER_ADMIN sits above ADMIN with full access). */
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthenticated' });
-    if (req.user.role_code === 'ADMIN' || roles.includes(req.user.role_code)) return next();
+    if (['ADMIN', 'SUPER_ADMIN'].includes(req.user.role_code) || roles.includes(req.user.role_code)) return next();
     return res.status(403).json({ error: `Forbidden: requires role in [${roles.join(', ')}]` });
   };
 }

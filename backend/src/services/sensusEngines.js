@@ -151,10 +151,41 @@ const ENGINES = {
   GANODERMA: computeGanoderma,
 };
 
+// ---------------------------------------------------------------------------------------------
+// SPEC_V2.md section 3: "V2 WAJIB refactor jadi generic" -- computeByHptCode now prefers the
+// data-driven `formula` table (via services/ruleEngine.js) over the hard-coded functions above.
+// Regression safety: db/seed.js seeds `formula` rows for these 5 HPT whose expression_json is
+// mathematically identical to the JS functions above (verified by re-running the PISP1 import
+// regression before/after this refactor -- see backend README / task report for the exact
+// before/after counts). If no `formula` row exists yet for a given HPT (e.g. schema loaded but
+// seed not run), this transparently falls back to the legacy hard-coded function so nothing ever
+// breaks -- the fallback is a safety net, not the primary path once seeded.
+// ---------------------------------------------------------------------------------------------
 function computeByHptCode(hptCode, payload) {
-  const fn = ENGINES[hptCode];
-  if (!fn) throw new Error(`Tidak ada sensus engine untuk HPT code=${hptCode}`);
-  return fn(payload);
+  const legacyFn = ENGINES[hptCode];
+  try {
+    // eslint-disable-next-line global-require
+    const { getActiveFormula, evaluateFormula } = require('./ruleEngine');
+    // eslint-disable-next-line global-require
+    const db = require('../db/db');
+    const hpt = db.prepare('SELECT * FROM hpt WHERE code=?').get(hptCode);
+    if (hpt) {
+      const formulaRow = getActiveFormula(hpt.id, 'SENSUS');
+      if (formulaRow) {
+        const result = evaluateFormula(formulaRow, payload);
+        // Preserve the exact return shape legacy callers (ingestion.js) expect.
+        const out = { hasil_hitung: result.hasil_hitung, satuan: result.satuan };
+        if (result.forced_kandidat_pengendalian !== undefined) out.forced_kandidat_pengendalian = result.forced_kandidat_pengendalian;
+        if (result.meta && result.meta.key) out.status_serangan = result.meta.key; // GANODERMA parity
+        return out;
+      }
+    }
+  } catch (e) {
+    if (!legacyFn) throw e; // no fallback available -> surface the real error
+    // else: fall through to legacy function below (defensive -- formula table not seeded yet, etc).
+  }
+  if (!legacyFn) throw new Error(`Tidak ada sensus engine untuk HPT code=${hptCode}`);
+  return legacyFn(payload);
 }
 
 module.exports = {

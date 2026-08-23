@@ -47,7 +47,10 @@ router.get(
 router.get(
   '/knowledge-base',
   asyncHandler(async (req, res) => {
-    const rows = db.prepare(`SELECT * FROM knowledge_base WHERE status_aktif=1 ORDER BY updated_at DESC`).all();
+    // V2 (SPEC_V2.md section 1 item 8): mobile only ever receives PUBLISHED documents.
+    // status_aktif ("still valid business-wise") and publish_status ("publication stage") are
+    // independent -- both must hold for a document to be worth syncing to a device.
+    const rows = db.prepare(`SELECT * FROM knowledge_base WHERE status_aktif=1 AND publish_status='PUBLISHED' ORDER BY updated_at DESC`).all();
     const withUrls = rows.map((r) => ({ ...r, download_url: r.file_path ? `/api/knowledge-base/${r.id}/file` : null }));
     res.json({ data: withUrls, synced_at: new Date().toISOString() });
   })

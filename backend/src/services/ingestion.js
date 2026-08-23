@@ -389,7 +389,9 @@ function ingestMortality(input, ctx = {}) {
   if (incident) {
     db.prepare('UPDATE incident SET mortality_id=?, updated_at=datetime(\'now\') WHERE id=?').run(row.id, incident.id);
     if (evalResult.hasil_efektivitas === 'EFEKTIF') {
-      db.prepare(`UPDATE incident SET status='CONTROLLED' WHERE id=? AND status NOT IN ('CLOSED')`).run(incident.id);
+      // V2 7-state alert/incident flow (SPEC_V2.md section 1 item 6): the old 'CONTROLLED' value
+      // is retired, use 'COMPLETED'.
+      db.prepare(`UPDATE incident SET status='COMPLETED' WHERE id=? AND status NOT IN ('CLOSED')`).run(incident.id);
     }
   }
 

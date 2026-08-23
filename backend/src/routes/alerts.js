@@ -1,6 +1,7 @@
-// EWS Alert Center (SPEC.md section 7). Status: NEW->ACKNOWLEDGED->IN_PROGRESS->CONTROLLED->
-// MONITORING->CLOSED. No approval gating -- any allowed role can move status forward/back;
-// every change is audit logged.
+// EWS Alert Center (SPEC.md section 7, updated to SPEC_V2.md section 1 item 6). Status:
+// NEW->ACKNOWLEDGED->ACTION_REQUIRED->IN_PROGRESS->COMPLETED->VERIFIED->CLOSED (V2 7-state flow;
+// V1 data migrated once at boot in db/db.js: CONTROLLED->COMPLETED, MONITORING->VERIFIED). No
+// approval gating -- any allowed role can move status forward/back; every change is audit logged.
 
 const express = require('express');
 const db = require('../db/db');
@@ -11,7 +12,7 @@ const { auditFromReq } = require('../services/audit');
 const router = express.Router();
 router.use(requireAuth);
 
-const VALID_STATUSES = ['NEW', 'ACKNOWLEDGED', 'IN_PROGRESS', 'CONTROLLED', 'MONITORING', 'CLOSED'];
+const VALID_STATUSES = ['NEW', 'ACKNOWLEDGED', 'ACTION_REQUIRED', 'IN_PROGRESS', 'COMPLETED', 'VERIFIED', 'CLOSED'];
 
 router.get(
   '/',
