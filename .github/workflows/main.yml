@@ -9,6 +9,8 @@ jobs:
     defaults:
       run:
         working-directory: mobile
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -24,7 +26,8 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
+      - name: Link EAS project
+        run: eas init --account aguswidanarko --non-interactive
+
       - name: Build Android APK (EAS cloud build)
         run: eas build --platform android --profile preview --non-interactive --wait
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
