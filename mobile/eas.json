@@ -1,8 +1,7 @@
 {
   "cli": {
     "version": ">= 13.0.0",
-    "appVersionSource": "local",
-    "packageManager": "npm"
+    "appVersionSource": "local"
   },
   "build": {
     "preview": {
