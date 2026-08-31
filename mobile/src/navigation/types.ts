@@ -11,6 +11,12 @@ export type RootStackParamList = {
   Login: undefined;
   Main: NavigatorScreenParams<MainTabParamList>;
   Deteksi: undefined;
+  // V3 Dynamic Form Engine (BRD_V3_Mobile_Offline.docx section 3): EwsPicker + EwsForm cover all
+  // 32 EWS_IDs (see domain/ewsFormSchema.ts) and replace the old per-indicator screens below as
+  // Home's navigation targets. The old screens/routes are kept registered (not deleted) so any
+  // in-flight deep link or rollback still works; only HomeScreen.tsx no longer points at them.
+  EwsPicker: { scope?: 'HPT' | 'Yield Making' | 'Agro' | 'WM' } | undefined;
+  EwsForm: { ews_id: string };
   SensusMenu: undefined;
   SensusUPDKS: undefined;
   SensusTikus: undefined;
@@ -39,6 +45,7 @@ export type RootStackParamList = {
       | 'bahan_organik'
       | 'tbm_vegetatif'
       | 'defisiensi_hara'
+      | 'agro_observation'
       | 'action_plan';
     localId: string;
   };

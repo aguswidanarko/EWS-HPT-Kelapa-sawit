@@ -257,7 +257,8 @@ export interface LocalPhoto {
     | 'BAHAN_ORGANIK'
     | 'TBM_VEGETATIF'
     | 'DEFISIENSI_HARA_TEMUAN'
-    | 'ACTION_PLAN';
+    | 'ACTION_PLAN'
+    | 'AGRO_OBSERVATION';
   entity_local_id: string;
   file_uri: string;
   gps_lat: number | null;
@@ -280,6 +281,7 @@ export interface SyncCounts {
   yieldMaking: number;
   defisiensiHara: number;
   actionPlan: number;
+  agroObservation: number;
 }
 
 // ================================================================== V2 (SPEC_V2.md) additions
@@ -376,6 +378,45 @@ export interface LocalTbmVegetatif extends SyncEnvelopeV2, GpsCapture {
 }
 
 export type YieldMakingKind = 'PARTENOCARPI' | 'WATER_MANAGEMENT' | 'BAHAN_ORGANIK' | 'TBM_VEGETATIF';
+
+// ================================================================== V3 Dynamic Form Engine
+// AGR-005..014 (Etiolasi, Pokok doyong, Areal tanpa teras, Overpruning, Susunan pelepah, Ground
+// cover management, Pokok kerdil, Abnormal, Pokok sisipan, Pokok mati) share ONE generic backend
+// table (agro_observation, schema.sql "V3 EXTENSIONS") discriminated by hpt_id + ews_id rather
+// than one table per indicator - see domain/ewsFormSchema.ts for why the mobile Dynamic Form
+// Engine mirrors that same generic shape instead of adding 10 more hard-coded local tables.
+export interface LocalAgroObservation extends SyncEnvelopeV2, GpsCapture {
+  estate_id: number | null;
+  afdeling_id: number | null;
+  blok_id: number;
+  hpt_id: number;
+  ews_id: string;
+  tanggal: string;
+  nilai_ukur: number | null;
+  kategori: string | null;
+  kategori_lokal: string | null;
+  ews_alert_lokal: 0 | 1;
+  location_warning: 0 | 1;
+  foto_local_id: string | null;
+  petugas: string | null;
+  catatan: string | null;
+}
+
+/** Local read-only cache of GET /api/master-ews-dictionary (schema.sql `ews_dictionary`) - the
+ * 32-row EWS Dictionary the Dynamic Form Engine's picker/help-text reads offline. Mobile never
+ * writes this table (admin-edited only, from the Dashboard). */
+export interface EwsDictionaryRow {
+  ews_id: string;
+  scope: string; // HPT | Yield Making | Agro | WM
+  hpt_id: number;
+  hpt_code: string;
+  hpt_name: string;
+  planting_stage: string | null;
+  threshold_display_text: string | null;
+  inspection_interval: string | null;
+  recommendation: string | null;
+  status: string;
+}
 
 export interface LocalDefisiensiHaraTemuan extends SyncEnvelopeV2, GpsCapture {
   leaf_analysis_id: number | null;

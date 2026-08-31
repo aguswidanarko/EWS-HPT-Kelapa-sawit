@@ -12,6 +12,7 @@ export interface RiwayatItem {
     | 'BAHAN_ORGANIK'
     | 'TBM_VEGETATIF'
     | 'DEFISIENSI_HARA'
+    | 'AGRO_OBSERVATION'
     | 'ACTION_PLAN';
   local_id: string;
   title: string;
@@ -74,6 +75,11 @@ export async function getRiwayat(limit = 300): Promise<RiwayatItem[]> {
               ('Blok #' || dh.blok_id || CASE WHEN dh.severity IS NOT NULL THEN ' - ' || dh.severity ELSE '' END) as subtitle,
               dh.tanggal, dh.created_at, dh.sync_status, dh.severity as kategori, 0 as ews_alert
          FROM defisiensi_hara_temuan dh
+       UNION ALL
+       SELECT 'AGRO_OBSERVATION' as kind, a.local_id, ('Agro Observation - ' || a.ews_id) as title,
+              ('Blok #' || a.blok_id || CASE WHEN a.kategori IS NOT NULL THEN ' - ' || a.kategori ELSE '' END) as subtitle,
+              a.tanggal, a.created_at, a.sync_status, COALESCE(a.kategori_lokal, a.kategori) as kategori, a.ews_alert_lokal as ews_alert
+         FROM agro_observations a
        UNION ALL
        SELECT 'ACTION_PLAN' as kind, u.local_id, ('Update Action Plan #' || u.action_plan_id) as title,
               ('Status baru: ' || COALESCE(u.status, '-')) as subtitle,

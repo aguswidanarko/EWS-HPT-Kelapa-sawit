@@ -18,7 +18,8 @@ export type FieldTable =
   | 'water_management'
   | 'bahan_organik'
   | 'tbm_vegetatif'
-  | 'defisiensi_hara_temuan';
+  | 'defisiensi_hara_temuan'
+  | 'agro_observations';
 
 export async function markSyncing(table: FieldTable, localId: string): Promise<void> {
   const db = await getDb();
@@ -89,7 +90,7 @@ export async function countPending(table: FieldTable): Promise<number> {
  * NULL/0 at insert time and are back-filled from the server's `classification` response once the
  * record actually syncs, purely for the Riwayat/local-alert list to have something to show. */
 export async function updateClassification(
-  table: 'yield_partenocarpi' | 'water_management' | 'bahan_organik' | 'tbm_vegetatif',
+  table: 'yield_partenocarpi' | 'water_management' | 'bahan_organik' | 'tbm_vegetatif' | 'agro_observations',
   localId: string,
   kategori: string | null,
   ewsAlert: boolean

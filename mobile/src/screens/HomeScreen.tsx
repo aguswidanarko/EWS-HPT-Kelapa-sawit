@@ -30,27 +30,27 @@ interface Counts {
 
 type MenuKey =
   | 'Deteksi'
-  | 'SensusMenu'
+  | 'EwsPicker'
   | 'Pengendalian'
   | 'Mortalitas'
-  | 'YieldMakingMenu'
-  | 'DefisiensiHara'
   | 'ActionPlan'
   | 'Panduan'
   | 'Riwayat'
   | 'Sinkronisasi';
 
-// SPEC_V2.md section 4 Mobile: "HomeScreen menu grid: tambah entri Yield Making, Defisiensi Hara,
-// Action Plan." Yield Making groups its 4 forms behind one tile (see YieldMakingMenuScreen) rather
-// than 4 separate Home tiles - judgment call to keep this grid's density in line with V1's (10
-// tiles vs the 7 that were here before; a 4-way fan-out would have pushed it to 13).
+// V3 Dynamic Form Engine (BRD_V3_Mobile_Offline.docx section 3): the old separate "Sensus",
+// "Yield Making" and "Defisiensi Hara" tiles (each opening its own hard-coded menu/screen) are
+// replaced by ONE "Observasi EWS" tile that opens EwsPickerScreen, which lists all 32 EWS_IDs
+// (HPT sensus + Yield Making + Agro + Water Management) grouped by scope - matching the BRD's
+// "seluruh 32 EWS dapat digunakan tanpa hard-code form terpisah" requirement instead of keeping
+// three separate entry points into what is now a single generic engine. The old screens/routes
+// stay registered in RootNavigator (not deleted) for rollback; only this menu no longer points at
+// them.
 const MENU_ITEMS: { key: MenuKey; label: string; emoji: string }[] = [
   { key: 'Deteksi', label: 'Deteksi', emoji: '🔍' },
-  { key: 'SensusMenu', label: 'Sensus', emoji: '📊' },
+  { key: 'EwsPicker', label: 'Observasi EWS', emoji: '📊' },
   { key: 'Pengendalian', label: 'Pengendalian', emoji: '🧪' },
   { key: 'Mortalitas', label: 'Mortalitas', emoji: '💀' },
-  { key: 'YieldMakingMenu', label: 'Yield Making', emoji: '🌴' },
-  { key: 'DefisiensiHara', label: 'Defisiensi Hara', emoji: '🍃' },
   { key: 'ActionPlan', label: 'Action Plan', emoji: '📋' },
   { key: 'Panduan', label: 'Panduan', emoji: '📘' },
   { key: 'Riwayat', label: 'Riwayat', emoji: '🕓' },
@@ -88,16 +88,12 @@ export default function HomeScreen({ navigation }: Props) {
     switch (key) {
       case 'Deteksi':
         return navigation.navigate('Deteksi');
-      case 'SensusMenu':
-        return navigation.navigate('SensusMenu');
+      case 'EwsPicker':
+        return navigation.navigate('EwsPicker');
       case 'Pengendalian':
         return navigation.navigate('Pengendalian');
       case 'Mortalitas':
         return navigation.navigate('Mortalitas');
-      case 'YieldMakingMenu':
-        return navigation.navigate('YieldMakingMenu');
-      case 'DefisiensiHara':
-        return navigation.navigate('DefisiensiHara');
       case 'ActionPlan':
         return navigation.navigate('ActionPlan');
       case 'Panduan':

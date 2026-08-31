@@ -255,6 +255,45 @@ CREATE TABLE IF NOT EXISTS photos (
   uploaded INTEGER NOT NULL DEFAULT 0, server_photo_id INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_photos_entity ON photos(entity_type, entity_local_id);
+
+-- ================================================================== V3 Dynamic Form Engine
+-- Generic capture table for AGR-005..014 (Etiolasi, Pokok doyong, Areal tanpa teras, Overpruning,
+-- Susunan pelepah, Ground cover management, Pokok kerdil, Abnormal, Pokok sisipan, Pokok mati) -
+-- mirrors backend/src/db/schema.sql's agro_observation table 1:1 (same reason the backend used
+-- one generic table instead of 10: no dedicated formula/UI per indicator, only a
+-- severity-or-single-measurement shape - see domain/ewsFormSchema.ts).
+CREATE TABLE IF NOT EXISTS agro_observations (
+  local_id TEXT PRIMARY KEY,
+  server_id TEXT, server_row_id INTEGER, incident_id INTEGER, user_id INTEGER, device_id TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  sync_status TEXT NOT NULL DEFAULT 'DRAFT', sync_attempt INTEGER NOT NULL DEFAULT 0,
+  sync_error TEXT, source TEXT NOT NULL DEFAULT 'MOBILE',
+  estate_id INTEGER, afdeling_id INTEGER, blok_id INTEGER NOT NULL,
+  hpt_id INTEGER NOT NULL, ews_id TEXT NOT NULL, tanggal TEXT NOT NULL,
+  nilai_ukur REAL, kategori TEXT,
+  kategori_lokal TEXT, ews_alert_lokal INTEGER NOT NULL DEFAULT 0,
+  gps_lat REAL, gps_lng REAL, gps_accuracy REAL, gps_timestamp TEXT, location_warning INTEGER NOT NULL DEFAULT 0,
+  foto_local_id TEXT, petugas TEXT, catatan TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_agro_observations_sync ON agro_observations(sync_status);
+CREATE INDEX IF NOT EXISTS idx_agro_observations_ews ON agro_observations(ews_id);
+
+-- Read-only local cache of GET /api/master-ews-dictionary (BRD_V3_Mobile_Offline.docx section 3
+-- "Dynamic Form ... dibentuk dari EWS Dictionary"): the 32-row registry the Dynamic Form Engine's
+-- EwsPickerScreen/EwsFormScreen read for display text (threshold, rekomendasi, interval) offline.
+-- Replaced wholesale on every sync (server is source of truth), same pattern as hpt/thresholds.
+CREATE TABLE IF NOT EXISTS ews_dictionary_cache (
+  ews_id TEXT PRIMARY KEY,
+  scope TEXT NOT NULL,
+  hpt_id INTEGER NOT NULL,
+  hpt_code TEXT,
+  hpt_name TEXT,
+  planting_stage TEXT,
+  threshold_display_text TEXT,
+  inspection_interval TEXT,
+  recommendation TEXT,
+  status TEXT NOT NULL DEFAULT 'ACTIVE'
+);
 `;
 
 export const SCHEMA_VERSION = 1;

@@ -5,6 +5,7 @@
 // so there is never a chance of the mobile app's local-only estimate overriding server truth.
 
 import type {
+  LocalAgroObservation,
   LocalBahanOrganik,
   LocalDefisiensiHaraTemuan,
   LocalDetection,
@@ -212,6 +213,31 @@ export function buildDefisiensiHaraTemuanPayload(row: LocalDefisiensiHaraTemuan,
     evidence_photo_id: fotoServerId,
     catatan: row.catatan,
     device_id: row.device_id,
+    source: 'MOBILE',
+  };
+}
+
+// V3 Dynamic Form Engine (routes/agroObservation.js's ingestAgroObservation() expects blok_id,
+// hpt_id, ews_id, tanggal as required fields - see domain/ewsFormSchema.ts).
+export function buildAgroObservationPayload(row: LocalAgroObservation, fotoServerId: number | null): Record<string, unknown> {
+  return {
+    local_id: row.local_id,
+    blok_id: row.blok_id,
+    afdeling_id: row.afdeling_id,
+    estate_id: row.estate_id,
+    hpt_id: row.hpt_id,
+    ews_id: row.ews_id,
+    tanggal: row.tanggal,
+    nilai_ukur: row.nilai_ukur,
+    kategori: row.kategori,
+    petugas: row.petugas,
+    gps_lat: row.gps_lat,
+    gps_lng: row.gps_lng,
+    gps_accuracy: row.gps_accuracy,
+    foto_id: fotoServerId,
+    catatan: row.catatan,
+    device_id: row.device_id,
+    created_at: row.created_at,
     source: 'MOBILE',
   };
 }

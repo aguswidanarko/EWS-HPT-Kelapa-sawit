@@ -8,7 +8,7 @@
 // every V1 kind (DRAFT -> READY_TO_SYNC -> SYNCING -> SYNCED/FAILED).
 
 import { http } from './client';
-import type { CachedActionPlan, CachedLeafAnalysis, SamplingRuleRow } from '../types';
+import type { CachedActionPlan, CachedLeafAnalysis, EwsDictionaryRow, SamplingRuleRow } from '../types';
 
 // ---------------------------------------------------------------- Yield Making (create)
 export type YieldMakingSubpath = 'partenocarpi' | 'water-management' | 'bahan-organik' | 'tbm-vegetatif';
@@ -68,4 +68,36 @@ export async function updateActionPlan(id: number, payload: ActionPlanUpdatePayl
 export async function downloadSamplingRules(): Promise<SamplingRuleRow[]> {
   const res = await http.get<{ data: SamplingRuleRow[] }>('/formulas/sampling-rules');
   return res.data.data;
+}
+
+// ---------------------------------------------------------------- Agro Observation (V3 Dynamic Form Engine)
+// routes/agroObservation.js - first live single-record create endpoint for AGR-005..014.
+export interface AgroObservationCreateResult {
+  data: Record<string, unknown> & { id: number; server_id: string };
+  classification: { kategori: string | null; ews_alert: boolean; classify_note?: string | null };
+  location_warning: boolean;
+}
+
+export async function createAgroObservationRecord(payload: Record<string, unknown>): Promise<AgroObservationCreateResult> {
+  const res = await http.post<AgroObservationCreateResult>('/agro-observation', payload);
+  return res.data;
+}
+
+// ---------------------------------------------------------------- EWS Dictionary (Dynamic Form Engine)
+export async function downloadEwsDictionary(): Promise<EwsDictionaryRow[]> {
+  const res = await http.get<{ data: (EwsDictionaryRow & Record<string, unknown>)[] }>('/master-ews-dictionary', {
+    params: { status: 'ACTIVE' },
+  });
+  return res.data.data.map((r) => ({
+    ews_id: r.ews_id,
+    scope: r.scope,
+    hpt_id: r.hpt_id,
+    hpt_code: r.hpt_code,
+    hpt_name: r.hpt_name,
+    planting_stage: r.planting_stage,
+    threshold_display_text: r.threshold_display_text,
+    inspection_interval: r.inspection_interval,
+    recommendation: r.recommendation,
+    status: r.status,
+  }));
 }

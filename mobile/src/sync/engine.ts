@@ -37,6 +37,8 @@ import * as photoRepo from '../db/repo/photoRepo';
 import * as yieldRepo from '../db/repo/yieldRepo';
 import * as defisiensiHaraRepo from '../db/repo/defisiensiHaraRepo';
 import * as actionPlanRepo from '../db/repo/actionPlanRepo';
+import * as agroObservationRepo from '../db/repo/agroObservationRepo';
+import * as ewsDictionaryRepo from '../db/repo/ewsDictionaryRepo';
 import {
   countByStatus,
   markDeferred,
@@ -48,6 +50,7 @@ import {
   type FieldTable,
 } from '../db/repo/syncCommon';
 import {
+  buildAgroObservationPayload,
   buildBahanOrganikPayload,
   buildDefisiensiHaraTemuanPayload,
   buildDetectionPayload,
@@ -84,6 +87,9 @@ export interface DownloadSummary {
   samplingRules: number;
   leafAnalysis: number;
   actionPlans: number;
+  /** V3 Dynamic Form Engine addition - also best-effort (see below): the picker/help-text still
+   * works from EWS_FORM_SCHEMA (bundled, offline) if this never lands. */
+  ewsDictionary: number;
   at: string;
 }
 
@@ -147,6 +153,18 @@ export async function downloadAll(): Promise<DownloadSummary> {
     /* non-critical */
   }
 
+  // ---- V3 (BRD_V3_Mobile_Offline.docx section 3 "Dynamic Form") addition ----------------------
+  let ewsDictionaryCount = 0;
+  try {
+    const dict = await v2Api.downloadEwsDictionary();
+    await ewsDictionaryRepo.saveEwsDictionary(dict);
+    ewsDictionaryCount = dict.length;
+  } catch {
+    /* non-critical - EwsPickerScreen/EwsFormScreen still work offline from the bundled
+       domain/ewsFormSchema.ts, they just show a generic label instead of the admin-edited
+       threshold/recommendation text until the next successful sync. */
+  }
+
   return {
     estates: master.estates.length,
     afdelings: master.afdelings.length,
@@ -160,6 +178,7 @@ export async function downloadAll(): Promise<DownloadSummary> {
     samplingRules: samplingRuleCount,
     leafAnalysis: leafAnalysisCount,
     actionPlans: actionPlanCount,
+    ewsDictionary: ewsDictionaryCount,
     at: nowIso(),
   };
 }
@@ -471,6 +490,38 @@ async function uploadDefisiensiHara(): Promise<{ success: number; failed: number
   return { success, failed, deferred, errors };
 }
 
+// V3 Dynamic Form Engine (AGR-005..014) - same single-record-REST-with-photo-first shape as
+// uploadYieldGeneric above, targeting the new POST /api/agro-observation instead.
+async function uploadAgroObservations(): Promise<{ success: number; failed: number; deferred: number; errors: string[] }> {
+  const rows = await agroObservationRepo.getReadyAgroObservations();
+  let success = 0;
+  let failed = 0;
+  let deferred = 0;
+  const errors: string[] = [];
+  for (const row of rows) {
+    const fotoServerId = await ensurePhotoUploaded(row.foto_local_id, 'AGRO_OBSERVATION');
+    if (row.foto_local_id && !fotoServerId) {
+      deferred++;
+      await markDeferred('agro_observations', row.local_id, 'Menunggu foto terunggah');
+      continue;
+    }
+    await markSyncing('agro_observations', row.local_id);
+    try {
+      const res = await v2Api.createAgroObservationRecord(buildAgroObservationPayload(row, fotoServerId));
+      await markSynced('agro_observations', row.local_id, res.data.server_id, (res.data.id as number) ?? null, null);
+      await updateClassification('agro_observations', row.local_id, res.classification.kategori, res.classification.ews_alert);
+      success++;
+    } catch (e) {
+      const msg = apiErrorMessage(e);
+      failed++;
+      errors.push(`${row.local_id}: ${msg}`);
+      await markFailed('agro_observations', row.local_id, msg);
+      if (isNetworkError(e)) break;
+    }
+  }
+  return { success, failed, deferred, errors };
+}
+
 /** action_plan_updates targets an EXISTING server-side action_plan row (PUT, not POST) - see
  * types.ts LocalActionPlanUpdate. Its status transitions live in db/repo/actionPlanRepo.ts since it
  * doesn't fit db/repo/syncCommon.ts's FieldTable contract (no server_id/server_row_id of its own). */
@@ -520,10 +571,11 @@ export async function uploadAll(onProgress?: ProgressListener): Promise<UploadSu
   const organik = await uploadBahanOrganik();
   const tbm = await uploadTbmVegetatif();
   const defHara = await uploadDefisiensiHara();
+  const agro = await uploadAgroObservations();
   const actionPlan = await uploadActionPlanUpdates();
   const photos = await uploadPhotos();
 
-  const v2Kinds = [parteno, water, organik, tbm, defHara, actionPlan];
+  const v2Kinds = [parteno, water, organik, tbm, defHara, agro, actionPlan];
   const v2Success = v2Kinds.reduce((sum, k) => sum + k.success, 0);
   const v2Failed = v2Kinds.reduce((sum, k) => sum + k.failed, 0);
   const v2Deferred = v2Kinds.reduce((sum, k) => sum + k.deferred, 0);
@@ -542,7 +594,7 @@ export async function uploadAll(onProgress?: ProgressListener): Promise<UploadSu
 }
 
 export async function getPendingCounts(): Promise<SyncCounts> {
-  const [d, s, t, m, yp, wm, bo, tv, dh, ap] = await Promise.all([
+  const [d, s, t, m, yp, wm, bo, tv, dh, ap, agro] = await Promise.all([
     countByStatus('detections'),
     countByStatus('sensus'),
     countByStatus('treatments'),
@@ -553,6 +605,7 @@ export async function getPendingCounts(): Promise<SyncCounts> {
     countByStatus('tbm_vegetatif'),
     countByStatus('defisiensi_hara_temuan'),
     actionPlanRepo.countPendingActionPlanUpdates(),
+    countByStatus('agro_observations'),
   ]);
   const pending = (c: Record<string, number>) => (c.READY_TO_SYNC ?? 0) + (c.FAILED ?? 0);
   return {
@@ -563,6 +616,7 @@ export async function getPendingCounts(): Promise<SyncCounts> {
     yieldMaking: pending(yp) + pending(wm) + pending(bo) + pending(tv),
     defisiensiHara: pending(dh),
     actionPlan: ap,
+    agroObservation: pending(agro),
   };
 }
 

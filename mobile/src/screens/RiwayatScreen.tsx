@@ -24,6 +24,7 @@ const KIND_FILTERS: { label: string; value: RiwayatItem['kind'] | null }[] = [
   { label: 'Bahan Organik', value: 'BAHAN_ORGANIK' },
   { label: 'TBM Vegetatif', value: 'TBM_VEGETATIF' },
   { label: 'Defisiensi Hara', value: 'DEFISIENSI_HARA' },
+  { label: 'Agro Observation', value: 'AGRO_OBSERVATION' },
   { label: 'Action Plan', value: 'ACTION_PLAN' },
 ];
 
@@ -79,6 +80,8 @@ export default function RiwayatScreen({ navigation }: Props) {
         return 'tbm_vegetatif';
       case 'DEFISIENSI_HARA':
         return 'defisiensi_hara';
+      case 'AGRO_OBSERVATION':
+        return 'agro_observation';
       case 'ACTION_PLAN':
         return 'action_plan';
       default:

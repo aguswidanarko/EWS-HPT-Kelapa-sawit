@@ -26,7 +26,16 @@ interface SyncContextValue {
 
 const SyncContext = createContext<SyncContextValue | undefined>(undefined);
 
-const EMPTY_COUNTS: SyncCounts = { deteksi: 0, sensus: 0, treatment: 0, mortalitas: 0, yieldMaking: 0, defisiensiHara: 0, actionPlan: 0 };
+const EMPTY_COUNTS: SyncCounts = {
+  deteksi: 0,
+  sensus: 0,
+  treatment: 0,
+  mortalitas: 0,
+  yieldMaking: 0,
+  defisiensiHara: 0,
+  actionPlan: 0,
+  agroObservation: 0,
+};
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
   const { isOnline } = useNet();
@@ -108,7 +117,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, [isOnline, runUpload, runDownload]);
 
   const pendingTotal =
-    pending.deteksi + pending.sensus + pending.treatment + pending.mortalitas + pending.yieldMaking + pending.defisiensiHara + pending.actionPlan;
+    pending.deteksi +
+    pending.sensus +
+    pending.treatment +
+    pending.mortalitas +
+    pending.yieldMaking +
+    pending.defisiensiHara +
+    pending.actionPlan +
+    pending.agroObservation;
   const pillStatus: ConnectionPillStatus = !isOnline ? 'OFFLINE' : isSyncing ? 'SYNCING' : 'ONLINE';
 
   const value = useMemo(

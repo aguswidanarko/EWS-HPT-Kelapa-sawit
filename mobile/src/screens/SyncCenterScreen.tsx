@@ -20,6 +20,7 @@ const KIND_LABEL: Record<RiwayatItem['kind'], string> = {
   BAHAN_ORGANIK: 'Bahan Organik',
   TBM_VEGETATIF: 'TBM Vegetatif',
   DEFISIENSI_HARA: 'Defisiensi Hara',
+  AGRO_OBSERVATION: 'Agro Observation',
   ACTION_PLAN: 'Action Plan',
 };
 
@@ -72,7 +73,8 @@ export default function SyncCenterScreen() {
                 Deteksi {pending.deteksi} - Sensus {pending.sensus} - Pengendalian {pending.treatment} - Mortalitas {pending.mortalitas}
               </Text>
               <Text style={styles.summaryBreakdown}>
-                Yield Making {pending.yieldMaking} - Defisiensi Hara {pending.defisiensiHara} - Action Plan {pending.actionPlan}
+                Yield Making {pending.yieldMaking} - Defisiensi Hara {pending.defisiensiHara} - Agro Observation {pending.agroObservation} - Action Plan{' '}
+                {pending.actionPlan}
               </Text>
             </>
           ) : (

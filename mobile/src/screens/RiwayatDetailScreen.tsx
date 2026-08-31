@@ -17,7 +17,10 @@ import {
 } from '../db/repo/yieldRepo';
 import { getDefisiensiHaraTemuanByLocalId } from '../db/repo/defisiensiHaraRepo';
 import { getActionPlanUpdateByLocalId } from '../db/repo/actionPlanRepo';
+import { getAgroObservationByLocalId } from '../db/repo/agroObservationRepo';
+import { getEwsDictionaryEntry } from '../db/repo/ewsDictionaryRepo';
 import type {
+  LocalAgroObservation,
   LocalBahanOrganik,
   LocalDefisiensiHaraTemuan,
   LocalDetection,
@@ -29,6 +32,7 @@ import type {
   LocalTreatment,
   LocalWaterManagement,
   LocalYieldPartenocarpi,
+  EwsDictionaryRow,
 } from '../types';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, spacing } from '../theme';
@@ -81,6 +85,8 @@ export default function RiwayatDetailScreen({ route }: Props) {
   const [bahanOrganik, setBahanOrganik] = useState<LocalBahanOrganik | null>(null);
   const [tbmVegetatif, setTbmVegetatif] = useState<LocalTbmVegetatif | null>(null);
   const [defisiensiHara, setDefisiensiHara] = useState<LocalDefisiensiHaraTemuan | null>(null);
+  const [agroObservation, setAgroObservation] = useState<LocalAgroObservation | null>(null);
+  const [agroDict, setAgroDict] = useState<EwsDictionaryRow | null>(null);
   const [actionPlanUpdate, setActionPlanUpdate] = useState<LocalActionPlanUpdate | null>(null);
   const [photos, setPhotos] = useState<LocalPhoto[]>([]);
 
@@ -122,6 +128,11 @@ export default function RiwayatDetailScreen({ route }: Props) {
         const row = await getDefisiensiHaraTemuanByLocalId(localId);
         setDefisiensiHara(row);
         setPhotos(await getPhotosByEntity('DEFISIENSI_HARA_TEMUAN', localId));
+      } else if (kind === 'agro_observation') {
+        const row = await getAgroObservationByLocalId(localId);
+        setAgroObservation(row);
+        if (row) setAgroDict(await getEwsDictionaryEntry(row.ews_id));
+        setPhotos(await getPhotosByEntity('AGRO_OBSERVATION', localId));
       } else if (kind === 'action_plan') {
         const row = await getActionPlanUpdateByLocalId(localId);
         setActionPlanUpdate(row);
@@ -324,6 +335,33 @@ export default function RiwayatDetailScreen({ route }: Props) {
           </SectionCard>
           <PhotoGallery photos={photos} />
           <SyncInfo status={defisiensiHara.sync_status} error={defisiensiHara.sync_error} attempt={defisiensiHara.sync_attempt} serverId={defisiensiHara.server_id} />
+        </>
+      )}
+
+      {kind === 'agro_observation' && agroObservation && (
+        <>
+          <SectionCard title={`Agro Observation - ${agroObservation.ews_id}`}>
+            <Row label="Tanggal" value={agroObservation.tanggal} />
+            <Row label="Blok" value={`#${agroObservation.blok_id}`} />
+            <Row label="Indikator" value={agroDict?.hpt_name} />
+            <Row label="Nilai ukur" value={agroObservation.nilai_ukur} />
+            <Row label="Kategori" value={agroObservation.kategori} />
+            <Row label="Petugas" value={agroObservation.petugas} />
+            <Row label="Catatan" value={agroObservation.catatan} />
+            {agroObservation.kategori_lokal ? (
+              <KategoriBadge kategori={agroObservation.kategori_lokal} alert={!!agroObservation.ews_alert_lokal} />
+            ) : (
+              <Text style={styles.pending}>Klasifikasi menunggu sinkronisasi ke server.</Text>
+            )}
+            {!!agroObservation.location_warning && <Text style={styles.warn}>⚠️ Lokasi di luar area blok saat disimpan</Text>}
+          </SectionCard>
+          <PhotoGallery photos={photos} />
+          <SyncInfo
+            status={agroObservation.sync_status}
+            error={agroObservation.sync_error}
+            attempt={agroObservation.sync_attempt}
+            serverId={agroObservation.server_id}
+          />
         </>
       )}
 
