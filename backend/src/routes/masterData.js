@@ -94,16 +94,30 @@ function crud(table, { allowedFields, writeRoles = ['ADMIN'], afterFetch = null,
   return r;
 }
 
+// ---------------------------------------------------------------- Region (V3 Addendum 2:
+// Master Wilayah -- "Data Per PT Afdeling & Rayon FR.xlsx")
+router.use(
+  '/regions',
+  crud('region', { allowedFields: ['code', 'name'] })
+);
+
 // ---------------------------------------------------------------- Estate
 router.use(
   '/estates',
-  crud('estate', { allowedFields: ['code', 'name', 'map_file_ref'] })
+  crud('estate', { allowedFields: ['code', 'name', 'map_file_ref', 'region_id'] })
+);
+
+// ---------------------------------------------------------------- Rayon (V3 Addendum 2:
+// Master Wilayah -- groups Afdeling within one Estate, e.g. "Rayon A/B/C")
+router.use(
+  '/rayons',
+  crud('rayon', { allowedFields: ['estate_id', 'code', 'name'] })
 );
 
 // ---------------------------------------------------------------- Afdeling
 router.use(
   '/afdelings',
-  crud('afdeling', { allowedFields: ['estate_id', 'code', 'name', 'map_file_ref'] })
+  crud('afdeling', { allowedFields: ['estate_id', 'code', 'name', 'map_file_ref', 'rayon_id', 'pemilik'] })
 );
 
 // ---------------------------------------------------------------- Blok

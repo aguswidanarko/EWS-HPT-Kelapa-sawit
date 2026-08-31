@@ -10,6 +10,7 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { uploadKnowledgeBase, KB_DIR } = require('../middleware/upload');
 const { auditFromReq } = require('../services/audit');
+const { indexDocument, reindexAll } = require('../services/kbIndexer');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -101,6 +102,11 @@ router.post(
         publish_status: publish_status || 'PUBLISHED',
         checksum,
       });
+    // Index the uploaded file's actual text content for AI Assistant retrieval (RAG). Runs inline
+    // (not fire-and-forget) so the response's index_status reflects the real outcome -- but a
+    // failure here never fails the upload itself: the row above is already committed, and the doc
+    // stays fully usable as a plain downloadable file either way (see kbIndexer.js header).
+    await indexDocument(info.lastInsertRowid);
     const row = db.prepare('SELECT * FROM knowledge_base WHERE id=?').get(info.lastInsertRowid);
     auditFromReq(req, { aktivitas: 'CREATE_KNOWLEDGE_BASE', after: row });
     res.status(201).json({ data: row });
@@ -137,9 +143,38 @@ router.post(
         publish_status: req.body.publish_status || 'PUBLISHED',
         checksum,
       });
+    // Only re-parses when a new file was actually uploaded with this version; a metadata-only
+    // new-version (file_path carried over from prev) keeps prev's existing chunks untouched.
+    if (req.file) await indexDocument(info.lastInsertRowid);
     const row = db.prepare('SELECT * FROM knowledge_base WHERE id=?').get(info.lastInsertRowid);
     auditFromReq(req, { aktivitas: 'NEW_VERSION_KNOWLEDGE_BASE', before: prev, after: row });
     res.status(201).json({ data: row });
+  })
+);
+
+// Re-run text extraction/indexing for one document -- for retrying a FAILED/UNSUPPORTED doc after
+// e.g. re-saving it in a supported format, or backfilling a doc uploaded before this RAG layer
+// existed (its index_status would still be the schema default 'PENDING').
+router.post(
+  '/:id/reindex',
+  requireRole('ADMIN', 'RND_FOD'),
+  asyncHandler(async (req, res) => {
+    const doc = db.prepare('SELECT * FROM knowledge_base WHERE id=?').get(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Not found' });
+    const result = await indexDocument(doc.id);
+    const row = db.prepare('SELECT * FROM knowledge_base WHERE id=?').get(doc.id);
+    res.json({ data: row, result });
+  })
+);
+
+// Bulk re-index every document not currently INDEXED -- one-off backfill for documents uploaded
+// before this RAG layer existed, and a general "retry all failures" tool.
+router.post(
+  '/reindex-all',
+  requireRole('ADMIN', 'RND_FOD'),
+  asyncHandler(async (req, res) => {
+    const results = await reindexAll();
+    res.json({ data: results });
   })
 );
 

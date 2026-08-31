@@ -10,6 +10,7 @@ const { computeByHptCode } = require('./sensusEngines');
 const { checkLocationWarning } = require('./geo');
 const { isLikelyDuplicate } = require('./duplicateDetection');
 const { logAudit } = require('./audit');
+const { computeIndicatorResult } = require('./ruleEngine'); // V3: generic classify path for agro_observation (no circular require -- ruleEngine.js does not require ingestion.js)
 
 const VALID_SOURCES = ['MOBILE', 'EXCEL', 'WEB', 'API'];
 
@@ -424,4 +425,102 @@ function ingestMortality(input, ctx = {}) {
   return { row, evalResult, incident };
 }
 
-module.exports = { ingestDetection, ingestSensus, ingestTreatment, ingestMortality, evaluateEffectiveness };
+// ---------------------------------------------------------------- AGRO OBSERVATION (BRD V3)
+// Generic severity-based capture for the 10 new Agro indicators with no dedicated table
+// (AGR-005..014, see db/seedEwsDictionaryV3.js). Same shape as ingestDetection/ingestSensus, but
+// classification goes through the V2/V3-native services/ruleEngine.js computeIndicatorResult()
+// (context='AGRO_OBSERVATION') rather than the V1 sensusEngines.js path, since these indicators
+// have no legacy V1 formula to preserve -- same idiom as routes/yieldMaking.js's tryClassify().
+// Soft-fails (kategori=null) if no formula/threshold is configured for the indicator yet, so field
+// data can still be captured before Rule & Parameter Management setup is complete -- matching
+// yieldMaking.js's tryClassify() exactly, not a new convention.
+function tryClassifyAgro(hptCode, payload, blok, ctx) {
+  try {
+    const result = computeIndicatorResult(hptCode, payload, blok, { context: 'AGRO_OBSERVATION', sourceType: 'AGRO_OBSERVATION', user_id: ctx.user_id });
+    return { kategori: result.kategori, ews_alert: result.alert_required ? 1 : 0, incident: result.engineResult.incident, alert: result.engineResult.alert, rule_version_id: result.rule_version_id };
+  } catch (e) {
+    return { kategori: payload.kategori || null, ews_alert: 0, incident: null, alert: null, rule_version_id: null, classify_error: e.message };
+  }
+}
+
+function ingestAgroObservation(input, ctx = {}) {
+  if (!input.blok_id || !input.hpt_id || !input.ews_id || !input.tanggal) {
+    throw Object.assign(new Error('blok_id, hpt_id, ews_id, tanggal wajib diisi'), { status: 400 });
+  }
+  const blok = getBlok(input.blok_id);
+  if (!blok) throw Object.assign(new Error('Blok tidak ditemukan'), { status: 400 });
+  const hpt = getHpt(input.hpt_id);
+  if (!hpt) throw Object.assign(new Error('Indikator (hpt_id) tidak ditemukan'), { status: 400 });
+  const afdeling_id = input.afdeling_id || blok.afdeling_id;
+  const afdeling = db.prepare('SELECT * FROM afdeling WHERE id=?').get(afdeling_id);
+  const estate_id = input.estate_id || (afdeling ? afdeling.estate_id : null);
+
+  const location_warning = checkLocationWarning(blok, input.gps_lat, input.gps_lng);
+  const classified = tryClassifyAgro(hpt.code, input, blok, { user_id: ctx.user_id || input.user_id });
+
+  const server_id = input.server_id || uuidv4();
+  const now = new Date().toISOString();
+
+  const info = db
+    .prepare(
+      `INSERT INTO agro_observation (
+        local_id, server_id, incident_id, user_id, device_id,
+        estate_id, afdeling_id, blok_id, hpt_id, ews_id, tanggal,
+        nilai_ukur, kategori, ews_alert, catatan,
+        gps_lat, gps_lng, gps_accuracy, location_warning, foto_id, petugas,
+        sync_status, sync_attempt, sync_error, source, created_at, updated_at
+      ) VALUES (
+        @local_id, @server_id, @incident_id, @user_id, @device_id,
+        @estate_id, @afdeling_id, @blok_id, @hpt_id, @ews_id, @tanggal,
+        @nilai_ukur, @kategori, @ews_alert, @catatan,
+        @gps_lat, @gps_lng, @gps_accuracy, @location_warning, @foto_id, @petugas,
+        @sync_status, @sync_attempt, @sync_error, @source, @created_at, @updated_at
+      )`
+    )
+    .run({
+      local_id: input.local_id || null,
+      server_id,
+      incident_id: classified.incident ? classified.incident.id : null,
+      user_id: ctx.user_id || input.user_id || null,
+      device_id: input.device_id || null,
+      estate_id,
+      afdeling_id,
+      blok_id: input.blok_id,
+      hpt_id: input.hpt_id,
+      ews_id: input.ews_id,
+      tanggal: input.tanggal,
+      nilai_ukur: input.nilai_ukur ?? null,
+      kategori: classified.kategori,
+      ews_alert: classified.ews_alert,
+      catatan: input.catatan || null,
+      gps_lat: input.gps_lat ?? null,
+      gps_lng: input.gps_lng ?? null,
+      gps_accuracy: input.gps_accuracy ?? null,
+      location_warning: location_warning ? 1 : 0,
+      foto_id: input.foto_id || null,
+      petugas: input.petugas || null,
+      sync_status: input.sync_status || 'SYNCED',
+      sync_attempt: input.sync_attempt || 0,
+      sync_error: input.sync_error || null,
+      source: normSource(input.source),
+      created_at: input.created_at || now,
+      updated_at: now,
+    });
+
+  const row = db.prepare('SELECT * FROM agro_observation WHERE id=?').get(info.lastInsertRowid);
+  if (classified.incident && !classified.incident.detection_id) {
+    // agro_observation has no dedicated incident.*_id column (unlike detection/sensus/treatment/
+    // mortality) -- the link back is via incident_id on this row only, which is sufficient for
+    // Export/Alert Center traceability without an idempotent schema migration to incident.
+  }
+  logAudit({
+    user_id: ctx.user_id || input.user_id || null,
+    aktivitas: 'CREATE_AGRO_OBSERVATION',
+    after: row,
+    device_source: input.source || ctx.device_source || 'API',
+    ip_session: ctx.ip_session || null,
+  });
+  return { row, classified, location_warning: !!location_warning };
+}
+
+module.exports = { ingestDetection, ingestSensus, ingestTreatment, ingestMortality, ingestAgroObservation, evaluateEffectiveness };

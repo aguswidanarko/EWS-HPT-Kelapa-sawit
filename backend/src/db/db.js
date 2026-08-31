@@ -41,6 +41,25 @@ function migrateV2Columns() {
   tryAddColumn('knowledge_base', `checksum TEXT`);
 }
 
+// V4: Knowledge Base RAG indexing status (see schema.sql "V4: KNOWLEDGE BASE RAG" / kb_chunk).
+// index_status: PENDING (not yet indexed) / INDEXED / FAILED / UNSUPPORTED (file type has no
+// text extractor) / SKIPPED (no file attached, e.g. metadata-only row).
+function migrateV4KbIndexColumns() {
+  tryAddColumn('knowledge_base', `index_status TEXT DEFAULT 'PENDING'`);
+  tryAddColumn('knowledge_base', `chunk_count INTEGER DEFAULT 0`);
+  tryAddColumn('knowledge_base', `indexed_at TEXT`);
+  tryAddColumn('knowledge_base', `index_error TEXT`);
+}
+
+// V3 Addendum 2: Master Wilayah (Region/PT/Rayon/Pemilik) -- "Data Per PT Afdeling & Rayon
+// FR.xlsx". region/rayon tables themselves are created in schema.sql (loaded before this runs);
+// these ALTER TABLEs only link the pre-existing estate/afdeling tables to them.
+function migrateV3AddendumColumns() {
+  tryAddColumn('estate', `region_id INTEGER REFERENCES region(id)`);
+  tryAddColumn('afdeling', `rayon_id INTEGER REFERENCES rayon(id)`);
+  tryAddColumn('afdeling', `pemilik TEXT`); // INTI / PLASMA / KKPA
+}
+
 /**
  * One-time alert/incident status value migration V1 -> V2 (SPEC_V2.md section 1 item 6 / section
  * 2 closing note): CONTROLLED -> COMPLETED, MONITORING -> VERIFIED. The UPDATE ... WHERE
@@ -59,7 +78,16 @@ function migrateAlertStatusV2() {
 
 loadSchema();
 migrateV2Columns();
+migrateV3AddendumColumns();
+migrateV4KbIndexColumns();
 migrateAlertStatusV2();
+
+// V3: BRD_V3 EWS Dictionary (31 EWS_ID rows) references base hpt codes (TIKUS/UPDKS/...) that
+// db/seed.js inserts, not schema.sql -- calling it here (at db.js require-time) would run BEFORE
+// those base rows exist on a fresh database. Deliberately NOT called from db.js: db/seed.js calls
+// it at the end of its own seeding (so `npm run seed` alone is self-contained) and src/index.js
+// calls it again on every boot (idempotent no-op once seeded) as a self-healing safety net for
+// databases seeded before this migration existed.
 
 module.exports = db;
 module.exports.DB_PATH = DB_PATH;

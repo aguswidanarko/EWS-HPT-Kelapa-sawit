@@ -542,6 +542,14 @@ function main() {
   );
   console.log(`Demo Tikus sensus: kategori=${tikusDemo.row.kategori}, incident=${tikusDemo.engineResult.incident ? tikusDemo.engineResult.incident.incident_code : null}`);
 
+  // BRD V3 EWS Dictionary (31 EWS_ID rows) -- depends on the hpt codes just seeded above
+  // (TIKUS/UPDKS/ORYCTES/RAYAP/GANODERMA/PARTENOCARPI/WATER_MANAGEMENT/BAHAN_ORGANIK/
+  // TBM_VEGETATIF/DEFISIENSI_HARA), so it must run after them, not from db.js's require-time
+  // (see seedEwsDictionaryV3.js's header comment). Idempotent -- safe even if already seeded.
+  const { seedEwsDictionaryV3 } = require('./seedEwsDictionaryV3');
+  const ewsDictResult = seedEwsDictionaryV3(db);
+  if (!ewsDictResult.skipped) console.log(`EWS Dictionary V3 seeded: ${ewsDictResult.committed} EWS_ID rows.`);
+
   console.log('\nSeed complete.');
   console.log('Demo login credentials (password for all: password123):');
   for (const u of userDefs) console.log(`  ${u.email}  (${roles.find((r) => roleId[r[0]] === u.role_id)[0]})`);

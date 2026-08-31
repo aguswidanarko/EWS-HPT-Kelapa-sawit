@@ -33,6 +33,9 @@ const KB_MIME = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
   'image/jpeg',
   'image/png',
   'image/webp',
@@ -63,7 +66,7 @@ const uploadPhoto = multer({
 const uploadKnowledgeBase = multer({
   storage: makeStorage(KB_DIR),
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
-  fileFilter: fileFilterFor(KB_MIME, ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']),
+  fileFilter: fileFilterFor(KB_MIME, ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.jpg', '.jpeg', '.png']),
 });
 
 const uploadGeoJSON = multer({

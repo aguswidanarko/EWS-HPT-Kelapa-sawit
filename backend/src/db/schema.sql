@@ -811,3 +811,201 @@ CREATE TABLE IF NOT EXISTS scoring_entry (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_scoring_entry_period ON scoring_entry(period_month, estate_id);
+
+-- =====================================================================================
+-- ===================== V3 EXTENSIONS (BRD_V3_*.docx + Master_EWS_Dictionary_V3.xlsx) =
+-- =====================================================================================
+-- Everything below is ADDITIVE, same discipline as the V2 section above: no existing table
+-- is dropped, renamed, or repurposed. BRD V3's "EWS Dictionary" (a literal EWS_ID such as
+-- HPT-001/AGR-004/YM-001/WM-002, one per indicator x planting-stage combination) is a thin
+-- registry layered on top of the already-generic `hpt` table (indicator) + `threshold`
+-- table (per fase_tanaman classification) + `formula` table (per hpt_id calculation) +
+-- `rule_version` table (versioning ledger) -- it does not replace them. Import/export
+-- transaction batches reuse the existing `import_log` table via new entity_type values
+-- (`EWS:<EWS_ID>` and `EWS_MASTER_DICTIONARY`) rather than a new log table, matching the
+-- codebase's existing single-import-log convention.
+
+-- Registry: maps each BRD V3 EWS_ID to the underlying generic indicator (hpt_id) and,
+-- where relevant, a specific planting stage. One hpt_id can be addressed by more than one
+-- EWS_ID (e.g. Tikus has HPT-001/002/003 for TM/TBM/TB-0 respectively, all pointing at the
+-- same hpt_id='TIKUS' row, disambiguated here by planting_stage + selected via `threshold`
+-- .fase_tanaman at classification time).
+CREATE TABLE IF NOT EXISTS ews_dictionary (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ews_id TEXT UNIQUE NOT NULL, -- e.g. HPT-001, AGR-004, YM-001, WM-002
+  scope TEXT NOT NULL, -- HPT | Yield Making | Agro | WM (mirrors Master_EWS_Dictionary_V3.xlsx 'Scope')
+  hpt_id INTEGER NOT NULL REFERENCES hpt(id),
+  planting_stage TEXT, -- TM | TBM | TB-0 | TBM/TM | NULL = not stage-specific
+  threshold_display_text TEXT, -- human-readable text from the dictionary; engine still reads threshold/formula
+  inspection_interval TEXT,
+  recommendation TEXT,
+  current_rule_version_id INTEGER REFERENCES rule_version(id),
+  status TEXT NOT NULL DEFAULT 'ACTIVE', -- ACTIVE | NONAKTIF -- an EWS_ID is never deleted, only deactivated
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_ews_dictionary_hpt ON ews_dictionary(hpt_id);
+CREATE INDEX IF NOT EXISTS idx_ews_dictionary_scope ON ews_dictionary(scope, status);
+
+-- Generic severity-based field capture for the Agro indicators that have no existing
+-- dedicated table (Pokok doyong, Areal tanpa teras, Overpruning, Susunan pelepah, Ground
+-- cover management, Pokok kerdil, Abnormal, Pokok sisipan, Pokok mati -- AGR-006..014, plus
+-- AGR-005 Etiolasi). Same sync envelope + gps/photo shape as the other V2 field-data
+-- tables so it behaves identically through Import Center / (future) mobile Sync Center.
+CREATE TABLE IF NOT EXISTS agro_observation (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  local_id TEXT,
+  server_id TEXT UNIQUE,
+  incident_id INTEGER REFERENCES incident(id),
+  user_id INTEGER REFERENCES user(id),
+  device_id TEXT,
+  estate_id INTEGER REFERENCES estate(id),
+  afdeling_id INTEGER REFERENCES afdeling(id),
+  blok_id INTEGER NOT NULL REFERENCES blok(id),
+  hpt_id INTEGER NOT NULL REFERENCES hpt(id), -- which indicator (Pokok doyong, Overpruning, ...)
+  ews_id TEXT NOT NULL, -- denormalized EWS_ID for direct filtering, matches ews_dictionary.ews_id
+  tanggal TEXT NOT NULL,
+  nilai_ukur REAL, -- optional numeric measurement when the indicator has one (e.g. derajat kemiringan, jumlah songgo)
+  kategori TEXT, -- computed severity: RINGAN/SEDANG/BERAT, or a qualitative status text
+  ews_alert INTEGER NOT NULL DEFAULT 0,
+  catatan TEXT,
+  gps_lat REAL,
+  gps_lng REAL,
+  gps_accuracy REAL,
+  location_warning INTEGER NOT NULL DEFAULT 0,
+  foto_id INTEGER,
+  petugas TEXT,
+  sync_status TEXT NOT NULL DEFAULT 'SYNCED',
+  sync_attempt INTEGER NOT NULL DEFAULT 0,
+  sync_error TEXT,
+  source TEXT NOT NULL DEFAULT 'API',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_agro_observation_blok ON agro_observation(blok_id);
+CREATE INDEX IF NOT EXISTS idx_agro_observation_ews ON agro_observation(ews_id);
+CREATE INDEX IF NOT EXISTS idx_agro_observation_tanggal ON agro_observation(tanggal);
+
+-- =====================================================================================
+-- ================= V3 ADDENDUM: EWS AI ASSISTANT (BRD Addendum PalmMind) =============
+-- =====================================================================================
+-- Audit ledger for every AI Assistant interaction (BRD Addendum section 25 "Audit AI" +
+-- AI Governance Rule 5 "Semua AI interaction dapat diaudit"). Answers are produced by a
+-- deterministic rule-based engine (services/aiAssistant.js) reading real EWS data --
+-- there is no external LLM/RAG credential available in this deployment (no OpenAI key,
+-- no Supabase/pgvector), so `engine` records which answer engine produced the row and
+-- `context_json`/`citations_json` snapshot exactly what real data the answer was grounded
+-- in, so nothing here is ever an invented/hallucinated number (Governance Rule 1 & 2).
+-- `engine` is free text so a future real LLM integration (e.g. 'LLM:claude-...') can be
+-- added later without a schema change, matching this codebase's additive-migration idiom.
+CREATE TABLE IF NOT EXISTS ai_interaction (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES user(id),
+  question TEXT NOT NULL,
+  blok_id INTEGER REFERENCES blok(id), -- optional grounding context selected by the user
+  ews_id TEXT, -- optional grounding context, matches ews_dictionary.ews_id
+  incident_id INTEGER REFERENCES incident(id), -- optional grounding context
+  intent TEXT, -- EXPLAIN_WARNING / SOP_LOOKUP / HISTORY / ACTION_PLAN_STATUS / GENERAL_KNOWLEDGE / UNKNOWN
+  context_json TEXT, -- full EWS Context snapshot used to compose the answer (traceability)
+  citations_json TEXT, -- list of {type, ref, label} sources the answer cited
+  answer TEXT NOT NULL,
+  rule_version_id INTEGER REFERENCES rule_version(id), -- set when the answer cited a specific formula/dictionary version
+  engine TEXT NOT NULL DEFAULT 'RULE_BASED_V1',
+  feedback TEXT, -- HELPFUL / NOT_HELPFUL / NULL (Governance -- Human Feedback)
+  feedback_reason TEXT, -- Wrong/Incomplete/Not Relevant/Incorrect SOP/Incorrect Recommendation/Other
+  feedback_note TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_ai_interaction_user ON ai_interaction(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_interaction_blok ON ai_interaction(blok_id);
+CREATE INDEX IF NOT EXISTS idx_ai_interaction_created ON ai_interaction(created_at);
+
+-- =====================================================================================
+-- ========== V3 ADDENDUM 2: MASTER WILAYAH (Region / PT / Rayon / Pemilik) ============
+-- =====================================================================================
+-- Source: "Data Per PT Afdeling & Rayon FR.xlsx" (Region, PT, BusinessUnit, Pemilik, Rayon,
+-- AfdelingCode, AfdelingName). Adds a wilayah hierarchy ABOVE the existing estate/afdeling
+-- tables: Region (Riau/Kalbar/Kaltim/...) groups Estate (PT/kebun, unchanged table -- PT code
+-- maps to estate.code, BusinessUnit maps to estate.name); Rayon groups Afdeling within one
+-- Estate (e.g. "Rayon A/B/C"). Both link back via ALTER TABLE-added nullable FK columns
+-- (estate.region_id, afdeling.rayon_id/afdeling.pemilik -- see migrateV3AddendumColumns in
+-- db.js, not here, since CREATE TABLE IF NOT EXISTS cannot add columns to an existing table),
+-- so any estate/afdeling row created before this addendum keeps working unchanged.
+CREATE TABLE IF NOT EXISTS region (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS rayon (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  estate_id INTEGER NOT NULL REFERENCES estate(id),
+  code TEXT NOT NULL, -- e.g. "Rayon A" -- unique per estate, reused as a label across different estates
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(estate_id, code)
+);
+CREATE INDEX IF NOT EXISTS idx_rayon_estate ON rayon(estate_id);
+
+-- =====================================================================================
+-- ============ V3 ADDENDUM 2: KOMENTAR PADA SEMUA MODUL DETAIL EWS ====================
+-- =====================================================================================
+-- Source: "Tambahan Fitur Komentar pada semua modul Detail EWS.pdf". Generic entity_type +
+-- entity_id so the same table/API/UI component serves Alert Detail, Incident Detail, Action
+-- Plan Detail, and the Blok detail panel on Peta EWS, matching the note's "semua modul Detail
+-- EWS" (all EWS Detail modules) instruction without a separate table per module.
+CREATE TABLE IF NOT EXISTS comment (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entity_type TEXT NOT NULL, -- ALERT / INCIDENT / ACTION_PLAN / BLOK
+  entity_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL REFERENCES user(id),
+  comment_text TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_comment_entity ON comment(entity_type, entity_id);
+
+-- =====================================================================================
+-- ================= V4: KNOWLEDGE BASE RAG (SOP full-text retrieval) ==================
+-- =====================================================================================
+-- Extends the existing `knowledge_base` table (file library: PDF/DOC/DOCX/XLS/XLSX/TXT/
+-- PPT/PPTX upload, versioning, publish workflow -- see routes/knowledgeBase.js) with actual
+-- document *content*, so the EWS AI Assistant can ground answers in real SOP text instead of
+-- matching on `judul` (title) alone. services/kbIndexer.js parses each uploaded file into
+-- `kb_chunk` rows on upload; `kb_chunk_fts` is an FTS5 full-text index kept in sync via triggers
+-- (standard SQLite "external content" pattern) so services/kbIndexer.js never has to maintain it
+-- by hand. Governance: this is retrieval only -- chunk text is stored/returned verbatim, never
+-- summarized or altered, so the same "never invent technical data" rule aiAssistant.js documents
+-- still holds when SOP content is added to an answer's context.
+CREATE TABLE IF NOT EXISTS kb_chunk (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  knowledge_base_id INTEGER NOT NULL REFERENCES knowledge_base(id) ON DELETE CASCADE,
+  chunk_index INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  page_number INTEGER,   -- PDF
+  slide_number INTEGER,  -- PPT/PPTX
+  sheet_name TEXT,       -- XLS/XLSX
+  heading TEXT,          -- nearest heading/section title above this chunk (DOCX/PDF/PPTX)
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_kb_chunk_document ON kb_chunk(knowledge_base_id);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS kb_chunk_fts USING fts5(
+  content,
+  content='kb_chunk',
+  content_rowid='id',
+  tokenize='unicode61 remove_diacritics 2'
+);
+
+CREATE TRIGGER IF NOT EXISTS kb_chunk_ai AFTER INSERT ON kb_chunk BEGIN
+  INSERT INTO kb_chunk_fts(rowid, content) VALUES (new.id, new.content);
+END;
+CREATE TRIGGER IF NOT EXISTS kb_chunk_ad AFTER DELETE ON kb_chunk BEGIN
+  INSERT INTO kb_chunk_fts(kb_chunk_fts, rowid, content) VALUES ('delete', old.id, old.content);
+END;
+CREATE TRIGGER IF NOT EXISTS kb_chunk_au AFTER UPDATE ON kb_chunk BEGIN
+  INSERT INTO kb_chunk_fts(kb_chunk_fts, rowid, content) VALUES ('delete', old.id, old.content);
+  INSERT INTO kb_chunk_fts(rowid, content) VALUES (new.id, new.content);
+END;

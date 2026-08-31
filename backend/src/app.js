@@ -39,6 +39,7 @@ app.use('/api/data-quality', require('./routes/dataQuality'));
 app.use('/api/sync-monitoring', require('./routes/syncMonitoring'));
 app.use('/api/notification-rules', require('./routes/notificationRules'));
 app.use('/api/audit-log', require('./routes/auditLog'));
+app.use('/api/comments', require('./routes/comments'));
 
 // ===================== V2 routes (SPEC_V2.md section 4 Backend) =====================
 app.use('/api/action-plans', require('./routes/actionPlans'));
@@ -48,6 +49,19 @@ app.use('/api/defisiensi-hara', require('./routes/defisiensiHara'));
 app.use('/api/scoring', require('./routes/scoring'));
 app.use('/api/scheduling-rules', require('./routes/schedulingRules'));
 app.use('/api/formulas', require('./routes/formulas'));
+
+// ===================== V3 routes (BRD V3 EWS Plantation) =====================
+app.use('/api/master-ews-dictionary', require('./routes/masterEwsDictionary'));
+app.use('/api/ews-transaction', require('./routes/ewsTransaction'));
+// Mobile V3 Dynamic Form Engine (BRD_V3_Mobile_Offline.docx section 3): first live single-record
+// create endpoint for the 10 AGR-005..014 indicators -- see routes/agroObservation.js header.
+app.use('/api/agro-observation', require('./routes/agroObservation'));
+
+// ===================== V3 Addendum: EWS AI Assistant (BRD Addendum PalmMind) =====================
+app.use('/api/ai-assistant', require('./routes/aiAssistant'));
+
+// ===================== V3 Addendum 2: Master Wilayah import (Region/PT/Rayon/Afdeling) =====================
+app.use('/api/master-wilayah-import', require('./routes/masterWilayahImport'));
 
 app.use((req, res) => res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` }));
 app.use(errorHandler);

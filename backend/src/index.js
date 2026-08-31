@@ -12,6 +12,11 @@ const app = require('./app');
 const { runAllSeedImports } = require('./db/seedImports');
 runAllSeedImports(db);
 
+// BRD V3 EWS Dictionary (31 EWS_ID rows) -- idempotent, no-op once ews_dictionary has rows. Called
+// here (not from db.js) so it runs after db/seed.js has already populated the base hpt codes
+// (TIKUS/UPDKS/...) it depends on -- see seedEwsDictionaryV3.js's header comment.
+require('./db/seedEwsDictionaryV3').seedEwsDictionaryV3(db);
+
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {

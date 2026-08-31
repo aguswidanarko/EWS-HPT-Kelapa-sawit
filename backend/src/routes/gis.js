@@ -100,6 +100,7 @@ router.get(
     const params = {};
     if (req.query.entity_type) { clauses.push('entity_type=@entity_type'); params.entity_type = req.query.entity_type; }
     if (req.query.entity_id) { clauses.push('entity_id=@entity_id'); params.entity_id = req.query.entity_id; }
+    if (req.query.status) { clauses.push('status=@status'); params.status = req.query.status; }
     let sql = 'SELECT * FROM geojson_layer';
     if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
     sql += ' ORDER BY entity_type, entity_id, version DESC';
