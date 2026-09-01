@@ -10,7 +10,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://ews-hpt-backend.onrender.com/api"
+        "EXPO_PUBLIC_API_URL": "http://10.110.1.9:4000/api"
       }
     },
     "production": {
@@ -19,7 +19,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://ews-hpt-backend.onrender.com/api"
+        "EXPO_PUBLIC_API_URL": "http://10.110.1.9:4000/api"
       }
     }
   }
