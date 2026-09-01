@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "com.ewshpt.mobile",
+        "usesCleartextTraffic": true,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
