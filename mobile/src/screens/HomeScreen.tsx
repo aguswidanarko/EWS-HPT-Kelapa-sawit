@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import SectionCard from '../components/SectionCard';
 import { useAuth } from '../state/AuthContext';
@@ -58,7 +58,7 @@ const MENU_ITEMS: { key: MenuKey; label: string; emoji: string }[] = [
 ];
 
 export default function HomeScreen({ navigation }: Props) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { pendingTotal, pending, lastSyncAt } = useSync();
   const [counts, setCounts] = useState<Counts>({ deteksi: 0, sensus: 0, treatment: 0, mortalitas: 0, yieldMaking: 0, tugasHariIni: 0 });
   const [alerts, setAlerts] = useState<alertRepo.LocalAlertRow[]>([]);
@@ -105,12 +105,33 @@ export default function HomeScreen({ navigation }: Props) {
     }
   };
 
+  const handleLogout = () => {
+    // Data yang belum tersinkron TIDAK hilang saat logout - tetap tersimpan lokal di SQLite dan
+    // akan terkirim begitu login kembali & tekan "Sinkronkan Sekarang" (lihat sync/engine.ts).
+    // Peringatan di bawah ini murni untuk mengingatkan petugas agar tidak lupa sinkron dulu.
+    const message =
+      pendingTotal > 0
+        ? `Masih ada ${pendingTotal} data yang belum tersinkron. Data tetap tersimpan di HP ini dan tidak akan hilang, tapi sebaiknya sinkronkan dulu sebelum keluar. Tetap keluar?`
+        : 'Yakin ingin keluar dari akun ini?';
+    Alert.alert('Keluar', message, [
+      { text: 'Batal', style: 'cancel' },
+      { text: 'Keluar', style: 'destructive', onPress: () => logout() },
+    ]);
+  };
+
   return (
     <ScreenContainer>
-      <Text style={styles.greeting}>Halo, {user?.name || 'Petugas'}</Text>
-      <Text style={styles.role}>
-        {user?.role_name} - {user?.estate_name || '-'} {user?.afdeling_name ? `/ ${user.afdeling_name}` : ''}
-      </Text>
+      <View style={styles.headerRow}>
+        <View style={styles.flex1}>
+          <Text style={styles.greeting}>Halo, {user?.name || 'Petugas'}</Text>
+          <Text style={styles.role}>
+            {user?.role_name} - {user?.estate_name || '-'} {user?.afdeling_name ? `/ ${user.afdeling_name}` : ''}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+          <Text style={styles.logoutText}>Keluar</Text>
+        </TouchableOpacity>
+      </View>
 
       <SectionCard title={`Ringkasan hari ini (${todayDateStr()})`}>
         <View style={styles.statsGrid}>
@@ -173,6 +194,10 @@ function StatTile({ label, value, emphasize }: { label: string; value: number; e
 }
 
 const styles = StyleSheet.create({
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  flex1: { flex: 1 },
+  logoutBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
+  logoutText: { fontSize: 12, fontWeight: '700', color: colors.danger },
   greeting: { fontSize: 18, fontWeight: '800', color: colors.text },
   role: { fontSize: 12, color: colors.textMuted, marginBottom: spacing.md },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 },
