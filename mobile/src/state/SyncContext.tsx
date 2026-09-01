@@ -35,6 +35,7 @@ const EMPTY_COUNTS: SyncCounts = {
   defisiensiHara: 0,
   actionPlan: 0,
   agroObservation: 0,
+  assessment: 0,
 };
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
@@ -124,7 +125,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     pending.yieldMaking +
     pending.defisiensiHara +
     pending.actionPlan +
-    pending.agroObservation;
+    pending.agroObservation +
+    pending.assessment;
   const pillStatus: ConnectionPillStatus = !isOnline ? 'OFFLINE' : isSyncing ? 'SYNCING' : 'ONLINE';
 
   const value = useMemo(

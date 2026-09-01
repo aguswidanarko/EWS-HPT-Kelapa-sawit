@@ -5,7 +5,9 @@
 // so there is never a chance of the mobile app's local-only estimate overriding server truth.
 
 import type {
+  AssessmentTreeDraft,
   LocalAgroObservation,
+  LocalAssessment,
   LocalBahanOrganik,
   LocalDefisiensiHaraTemuan,
   LocalDetection,
@@ -239,6 +241,57 @@ export function buildAgroObservationPayload(row: LocalAgroObservation, fotoServe
     device_id: row.device_id,
     created_at: row.created_at,
     source: 'MOBILE',
+  };
+}
+
+// V3.1 Universal Assessment Form (routes/assessment.js's ingestAssessment() - see
+// services/assessmentEngine.js). `treesWithPhotoIds` is the trees array from row.trees_json with
+// each tree's foto_local_id already resolved to a server photo id by sync/engine.ts's
+// uploadAssessments() (mirrors ensurePhotoUploaded's photo-before-record ordering, just looped
+// per tree instead of once per record). Never sends kategori/percentage/threshold - only raw
+// counts/flags, exactly like every other V2/V3 payload.
+export function buildAssessmentPayload(
+  row: LocalAssessment,
+  treesWithPhotoIds: (AssessmentTreeDraft & { foto_id: number | null })[]
+): Record<string, unknown> {
+  const area = safeParseJson<Record<string, unknown> | null>(row.area_json, null);
+  const water = safeParseJson<Record<string, unknown> | null>(row.water_json, null);
+  return {
+    local_id: row.local_id,
+    blok_id: row.blok_id,
+    afdeling_id: row.afdeling_id,
+    estate_id: row.estate_id,
+    planting_stage: row.planting_stage,
+    baris: row.baris,
+    sampling_method: row.sampling_method,
+    tanggal: row.tanggal,
+    waktu_mulai: row.waktu_mulai,
+    waktu_selesai: row.waktu_selesai,
+    gps_lat: row.gps_lat,
+    gps_lng: row.gps_lng,
+    gps_accuracy: row.gps_accuracy,
+    catatan: row.catatan,
+    petugas: row.petugas,
+    device_id: row.device_id,
+    created_at: row.created_at,
+    source: 'MOBILE',
+    trees: treesWithPhotoIds.map((t) => ({
+      pokok_index: t.pokok_index,
+      status_pokok: t.status_pokok,
+      kondisi: t.kondisi,
+      pruning: t.pruning,
+      susunan_pelepah: t.susunan_pelepah,
+      piringan: t.piringan,
+      gulma_piringan: t.gulma_piringan,
+      defisiensi: t.defisiensi,
+      hama: t.hama,
+      foto_id: t.foto_id,
+      gps_lat: t.gps_lat,
+      gps_lng: t.gps_lng,
+      catatan: t.catatan,
+    })),
+    area: area || undefined,
+    water: water || undefined,
   };
 }
 

@@ -83,6 +83,26 @@ export async function createAgroObservationRecord(payload: Record<string, unknow
   return res.data;
 }
 
+// ---------------------------------------------------------------- Assessment (V3.1 Universal Assessment Form)
+// routes/assessment.js - one visit, many EWS results (services/assessmentEngine.js).
+export interface AssessmentCreateResult {
+  data: Record<string, unknown> & { id: number; server_id: string; assessment_code: string };
+  calculation_results: {
+    ews_id: string;
+    hpt_id: number | null;
+    kategori: string | null;
+    ews_alert: number;
+    requires_manual_sensus: number;
+    note: string | null;
+  }[];
+  location_warning: boolean;
+}
+
+export async function createAssessmentRecord(payload: Record<string, unknown>): Promise<AssessmentCreateResult> {
+  const res = await http.post<AssessmentCreateResult>('/assessment', payload);
+  return res.data;
+}
+
 // ---------------------------------------------------------------- EWS Dictionary (Dynamic Form Engine)
 export async function downloadEwsDictionary(): Promise<EwsDictionaryRow[]> {
   const res = await http.get<{ data: (EwsDictionaryRow & Record<string, unknown>)[] }>('/master-ews-dictionary', {

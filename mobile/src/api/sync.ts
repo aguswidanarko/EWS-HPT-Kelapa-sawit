@@ -91,7 +91,8 @@ export interface UploadPhotoParams {
     | 'TBM_VEGETATIF'
     | 'DEFISIENSI_HARA_TEMUAN'
     | 'ACTION_PLAN'
-    | 'AGRO_OBSERVATION';
+    | 'AGRO_OBSERVATION'
+    | 'ASSESSMENT_TREE';
   /** V1 kinds: server-side numeric id (only upload once the parent record has synced). V2 kinds
    * upload the photo BEFORE their parent record exists server-side (see sync/engine.ts
    * ensurePhotoUploaded), so this is null there - the photo row's entity_id column just stays

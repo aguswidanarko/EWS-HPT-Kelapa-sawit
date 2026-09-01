@@ -38,6 +38,7 @@ import * as yieldRepo from '../db/repo/yieldRepo';
 import * as defisiensiHaraRepo from '../db/repo/defisiensiHaraRepo';
 import * as actionPlanRepo from '../db/repo/actionPlanRepo';
 import * as agroObservationRepo from '../db/repo/agroObservationRepo';
+import * as assessmentRepo from '../db/repo/assessmentRepo';
 import * as ewsDictionaryRepo from '../db/repo/ewsDictionaryRepo';
 import {
   countByStatus,
@@ -51,6 +52,7 @@ import {
 } from '../db/repo/syncCommon';
 import {
   buildAgroObservationPayload,
+  buildAssessmentPayload,
   buildBahanOrganikPayload,
   buildDefisiensiHaraTemuanPayload,
   buildDetectionPayload,
@@ -62,6 +64,8 @@ import {
   buildYieldPartenocarpiPayload,
 } from './payloads';
 import type {
+  AssessmentTreeDraft,
+  CalculationResultSummary,
   LocalBahanOrganik,
   LocalDefisiensiHaraTemuan,
   LocalMortality,
@@ -71,7 +75,7 @@ import type {
   LocalYieldPartenocarpi,
   SyncCounts,
 } from '../types';
-import { nowIso } from '../utils/format';
+import { nowIso, safeParseJson } from '../utils/format';
 
 export interface DownloadSummary {
   estates: number;
@@ -522,6 +526,57 @@ async function uploadAgroObservations(): Promise<{ success: number; failed: numb
   return { success, failed, deferred, errors };
 }
 
+// V3.1 Universal Assessment Form - one visit = one POST /api/assessment carrying trees[] inline
+// (not N per-tree calls, since routes/sync.js's batch endpoint only covers the 4 V1 kinds and
+// inventing a second new batch endpoint for a single new entity wasn't worth it - the whole visit
+// is one JSON body either way). Photos are per-tree (0..N), so this loops ensurePhotoUploaded
+// once per tree needing one BEFORE building the payload, same ordering rule as every other V2/V3
+// upload (photo first, defer the whole record if any required photo can't be resolved yet).
+async function uploadAssessments(): Promise<{ success: number; failed: number; deferred: number; errors: string[] }> {
+  const rows = await assessmentRepo.getReadyAssessments();
+  let success = 0;
+  let failed = 0;
+  let deferred = 0;
+  const errors: string[] = [];
+  for (const row of rows) {
+    const trees = safeParseJson<AssessmentTreeDraft[]>(row.trees_json, []);
+    let blockedOnPhoto = false;
+    const treesWithPhotoIds: (AssessmentTreeDraft & { foto_id: number | null })[] = [];
+    for (const t of trees) {
+      const fotoServerId = await ensurePhotoUploaded(t.foto_local_id, 'ASSESSMENT_TREE');
+      if (t.foto_local_id && !fotoServerId) {
+        blockedOnPhoto = true;
+        break;
+      }
+      treesWithPhotoIds.push({ ...t, foto_id: fotoServerId });
+    }
+    if (blockedOnPhoto) {
+      deferred++;
+      await assessmentRepo.markDeferred(row.local_id, 'Menunggu foto pokok terunggah');
+      continue;
+    }
+    await assessmentRepo.markSyncing(row.local_id);
+    try {
+      const res = await v2Api.createAssessmentRecord(buildAssessmentPayload(row, treesWithPhotoIds));
+      const summary: CalculationResultSummary[] = res.calculation_results.map((r) => ({
+        ews_id: r.ews_id,
+        kategori: r.kategori,
+        ews_alert: !!r.ews_alert,
+        requiresManualSensus: !!r.requires_manual_sensus,
+      }));
+      await assessmentRepo.markSynced(row.local_id, res.data.server_id, (res.data.id as number) ?? null, res.data.assessment_code ?? null, summary);
+      success++;
+    } catch (e) {
+      const msg = apiErrorMessage(e);
+      failed++;
+      errors.push(`${row.local_id}: ${msg}`);
+      await assessmentRepo.markFailed(row.local_id, msg);
+      if (isNetworkError(e)) break;
+    }
+  }
+  return { success, failed, deferred, errors };
+}
+
 /** action_plan_updates targets an EXISTING server-side action_plan row (PUT, not POST) - see
  * types.ts LocalActionPlanUpdate. Its status transitions live in db/repo/actionPlanRepo.ts since it
  * doesn't fit db/repo/syncCommon.ts's FieldTable contract (no server_id/server_row_id of its own). */
@@ -572,10 +627,11 @@ export async function uploadAll(onProgress?: ProgressListener): Promise<UploadSu
   const tbm = await uploadTbmVegetatif();
   const defHara = await uploadDefisiensiHara();
   const agro = await uploadAgroObservations();
+  const assessment = await uploadAssessments();
   const actionPlan = await uploadActionPlanUpdates();
   const photos = await uploadPhotos();
 
-  const v2Kinds = [parteno, water, organik, tbm, defHara, agro, actionPlan];
+  const v2Kinds = [parteno, water, organik, tbm, defHara, agro, assessment, actionPlan];
   const v2Success = v2Kinds.reduce((sum, k) => sum + k.success, 0);
   const v2Failed = v2Kinds.reduce((sum, k) => sum + k.failed, 0);
   const v2Deferred = v2Kinds.reduce((sum, k) => sum + k.deferred, 0);
@@ -594,7 +650,7 @@ export async function uploadAll(onProgress?: ProgressListener): Promise<UploadSu
 }
 
 export async function getPendingCounts(): Promise<SyncCounts> {
-  const [d, s, t, m, yp, wm, bo, tv, dh, ap, agro] = await Promise.all([
+  const [d, s, t, m, yp, wm, bo, tv, dh, ap, agro, assessment] = await Promise.all([
     countByStatus('detections'),
     countByStatus('sensus'),
     countByStatus('treatments'),
@@ -606,6 +662,7 @@ export async function getPendingCounts(): Promise<SyncCounts> {
     countByStatus('defisiensi_hara_temuan'),
     actionPlanRepo.countPendingActionPlanUpdates(),
     countByStatus('agro_observations'),
+    assessmentRepo.countPendingAssessments(),
   ]);
   const pending = (c: Record<string, number>) => (c.READY_TO_SYNC ?? 0) + (c.FAILED ?? 0);
   return {
@@ -617,6 +674,7 @@ export async function getPendingCounts(): Promise<SyncCounts> {
     defisiensiHara: pending(dh),
     actionPlan: ap,
     agroObservation: pending(agro),
+    assessment,
   };
 }
 

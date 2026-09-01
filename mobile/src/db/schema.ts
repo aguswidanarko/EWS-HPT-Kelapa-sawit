@@ -278,6 +278,28 @@ CREATE TABLE IF NOT EXISTS agro_observations (
 CREATE INDEX IF NOT EXISTS idx_agro_observations_sync ON agro_observations(sync_status);
 CREATE INDEX IF NOT EXISTS idx_agro_observations_ews ON agro_observations(ews_id);
 
+-- V3.1 Universal Assessment Form (BRD_Mobile_V3_1.docx) - one row per field visit. trees/area/
+-- water are stored as JSON blobs (same idiom as sensus.hasil_json) since the whole visit syncs
+-- as ONE record in ONE POST /api/assessment call - see types.ts's LocalAssessment and
+-- sync/engine.ts's uploadAssessments(). Replaces the per-EWS_ID picker as the PRIMARY entry
+-- point for the 29 of 31 EWS indicators the Assessment Mapping Dictionary covers; Observasi EWS
+-- (EwsPickerScreen) stays available for the remainder (Yield Making, Pokok Doyong) and as a
+-- manual per-indicator fallback.
+CREATE TABLE IF NOT EXISTS assessments (
+  local_id TEXT PRIMARY KEY,
+  server_id TEXT, server_row_id INTEGER, assessment_code TEXT, user_id INTEGER, device_id TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  sync_status TEXT NOT NULL DEFAULT 'DRAFT', sync_attempt INTEGER NOT NULL DEFAULT 0,
+  sync_error TEXT, source TEXT NOT NULL DEFAULT 'MOBILE',
+  estate_id INTEGER, afdeling_id INTEGER, blok_id INTEGER NOT NULL,
+  planting_stage TEXT, baris TEXT, sampling_method TEXT, sample_count INTEGER NOT NULL DEFAULT 0,
+  tanggal TEXT NOT NULL, waktu_mulai TEXT, waktu_selesai TEXT,
+  gps_lat REAL, gps_lng REAL, gps_accuracy REAL, location_warning INTEGER NOT NULL DEFAULT 0,
+  catatan TEXT, petugas TEXT,
+  trees_json TEXT NOT NULL, area_json TEXT, water_json TEXT, calc_summary_json TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_assessments_sync ON assessments(sync_status);
+
 -- Read-only local cache of GET /api/master-ews-dictionary (BRD_V3_Mobile_Offline.docx section 3
 -- "Dynamic Form ... dibentuk dari EWS Dictionary"): the 32-row registry the Dynamic Form Engine's
 -- EwsPickerScreen/EwsFormScreen read for display text (threshold, rekomendasi, interval) offline.

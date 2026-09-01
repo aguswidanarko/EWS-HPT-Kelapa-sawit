@@ -30,6 +30,7 @@ interface Counts {
 
 type MenuKey =
   | 'Deteksi'
+  | 'Assessment'
   | 'EwsPicker'
   | 'Pengendalian'
   | 'Mortalitas'
@@ -46,8 +47,16 @@ type MenuKey =
 // three separate entry points into what is now a single generic engine. The old screens/routes
 // stay registered in RootNavigator (not deleted) for rollback; only this menu no longer points at
 // them.
+//
+// V3.1 Universal Assessment Form (BRD_Mobile_V3_1.docx): "Assessment Lapangan" is now the
+// PRIMARY way to capture field data - one visit, many pokok, backend computes every relevant EWS
+// result automatically (see domain/assessmentSchema.ts, AssessmentScreen.tsx). "Observasi EWS"
+// (the per-EWS_ID picker) stays as a manual fallback for the 2 indicators the new form doesn't
+// cover (Yield Making, Pokok Doyong) and for any case a petugas prefers the old single-indicator
+// flow - not removed, just no longer the only path in.
 const MENU_ITEMS: { key: MenuKey; label: string; emoji: string }[] = [
   { key: 'Deteksi', label: 'Deteksi', emoji: '🔍' },
+  { key: 'Assessment', label: 'Assessment Lapangan', emoji: '📝' },
   { key: 'EwsPicker', label: 'Observasi EWS', emoji: '📊' },
   { key: 'Pengendalian', label: 'Pengendalian', emoji: '🧪' },
   { key: 'Mortalitas', label: 'Mortalitas', emoji: '💀' },
@@ -88,6 +97,8 @@ export default function HomeScreen({ navigation }: Props) {
     switch (key) {
       case 'Deteksi':
         return navigation.navigate('Deteksi');
+      case 'Assessment':
+        return navigation.navigate('Assessment');
       case 'EwsPicker':
         return navigation.navigate('EwsPicker');
       case 'Pengendalian':

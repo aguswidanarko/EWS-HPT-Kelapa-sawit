@@ -258,7 +258,8 @@ export interface LocalPhoto {
     | 'TBM_VEGETATIF'
     | 'DEFISIENSI_HARA_TEMUAN'
     | 'ACTION_PLAN'
-    | 'AGRO_OBSERVATION';
+    | 'AGRO_OBSERVATION'
+    | 'ASSESSMENT_TREE';
   entity_local_id: string;
   file_uri: string;
   gps_lat: number | null;
@@ -282,6 +283,7 @@ export interface SyncCounts {
   defisiensiHara: number;
   actionPlan: number;
   agroObservation: number;
+  assessment: number;
 }
 
 // ================================================================== V2 (SPEC_V2.md) additions
@@ -516,6 +518,119 @@ export interface SamplingRuleRow {
   unit_scope: string | null;
   description: string | null;
   active: number;
+}
+
+// ================================================================== V3.1 Universal Assessment Form
+// BRD_Mobile_V3_1.docx: one field visit captures raw per-pokok observations across ALL 31 EWS
+// indicators at once (instead of picking one of 32 EWS_ID and filling one form - see
+// domain/assessmentSchema.ts). Backend fans this out into potentially many EWS results
+// (services/assessmentEngine.js) - mobile only ever sends raw counts/flags, never a computed
+// kategori/percentage, matching every other V2/V3 payload's "server is classification truth" rule.
+
+export type KondisiPokokTag = 'KERDIL' | 'ETIOLASI' | 'SISIPAN' | 'KASTRASI' | 'SANITASI' | 'TUMBANG' | 'KOSONG_MATI' | 'ABNORMAL';
+export type PruningStatus = 'NORMAL' | 'UNDER' | 'OVER';
+export type BaikTidakBaik = 'BAIK' | 'TIDAK_BAIK';
+export type SusunanPelepahStatus = 'NORMAL' | 'TIDAK_SESUAI';
+export type GulmaTag = 'VOPS' | 'BROAD_LEAF' | 'FERN' | 'WOODIES' | 'GRASSES';
+export type DefisiensiUnsur = 'N' | 'P' | 'K' | 'MG' | 'B' | 'CU' | 'ZN' | 'FE' | 'NK';
+export type DefisiensiSeverity = 'RINGAN' | 'SEDANG' | 'BERAT';
+export type HamaJenis = 'ULAT' | 'TIKUS' | 'RAYAP' | 'KUMBANG' | 'TIRATHABA' | 'UPPER_STEM_ROOT' | 'BASAL_STEM_ROOT' | 'LAINNYA';
+
+export interface AssessmentDefisiensi {
+  unsur: DefisiensiUnsur;
+  severity: DefisiensiSeverity;
+}
+export interface AssessmentHama {
+  jenis: HamaJenis;
+  catatan?: string | null;
+}
+
+/** One pokok examined during a visit - normal-first/exception-only (BRD section 3 "Prinsip UX"):
+ * kondisi/pruning/defisiensi/hama only carry entries when something was actually found. */
+export interface AssessmentTreeDraft {
+  pokok_index: number;
+  status_pokok: 'NORMAL' | 'EXCEPTION';
+  kondisi: KondisiPokokTag[];
+  pruning: PruningStatus;
+  susunan_pelepah: SusunanPelepahStatus | null;
+  piringan: BaikTidakBaik | null;
+  gulma_piringan: GulmaTag[];
+  defisiensi: AssessmentDefisiensi[];
+  hama: AssessmentHama[];
+  foto_local_id: string | null;
+  gps_lat: number | null;
+  gps_lng: number | null;
+  catatan: string | null;
+}
+
+export interface AssessmentAreaDraft {
+  gawangan: BaikTidakBaik | null;
+  gulma_gawangan: GulmaTag[];
+  aplikasi_pupuk: boolean;
+  jenis_pupuk: string | null;
+  tanggal_pupuk: string | null;
+  keterangan_pupuk: string | null;
+  by_product: ('DDS' | 'BA' | 'FIBER')[];
+  keterangan_by_product: string | null;
+  erosi: 'TIDAK_ADA' | 'RINGAN' | 'SEDANG' | 'BERAT' | null;
+  catatan: string | null;
+  kbh: 'BAIK' | 'TIDAK_ADA' | 'TIDAK_BAIK' | null;
+  beneficial_plants: 'BAIK' | 'TIDAK_ADA' | 'TIDAK_BAIK' | null;
+}
+
+export interface AssessmentWaterDraft {
+  drainase: BaikTidakBaik | null;
+  water_level_cm: number | null;
+  water_weir: BaikTidakBaik | null;
+  kondisi_parit: 'BAIK' | 'RUSAK' | 'TERSUMBAT' | 'LAINNYA' | null;
+  lama_genangan_hari: number | null;
+  catatan: string | null;
+}
+
+export interface CalculationResultSummary {
+  ews_id: string;
+  hpt_code?: string;
+  kategori: string | null;
+  ews_alert: boolean;
+  requiresManualSensus?: boolean;
+}
+
+/** Local `assessments` table - trees/area/water stored as JSON blobs (same idiom as sensus'
+ * hasil_json for row/grid-sampling layouts) since the whole visit syncs as ONE record in ONE
+ * POST /api/assessment call, not N per-tree calls (see sync/engine.ts's uploadAssessments()). */
+export interface LocalAssessment {
+  local_id: string;
+  server_id: string | null;
+  server_row_id: number | null;
+  assessment_code: string | null;
+  user_id: number | null;
+  device_id: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: SyncStatus;
+  sync_attempt: number;
+  sync_error: string | null;
+  source: SourceTag;
+  estate_id: number | null;
+  afdeling_id: number | null;
+  blok_id: number;
+  planting_stage: string | null;
+  baris: string | null;
+  sampling_method: string | null;
+  sample_count: number;
+  tanggal: string;
+  waktu_mulai: string | null;
+  waktu_selesai: string | null;
+  gps_lat: number | null;
+  gps_lng: number | null;
+  gps_accuracy: number | null;
+  location_warning: 0 | 1;
+  catatan: string | null;
+  petugas: string | null;
+  trees_json: string; // AssessmentTreeDraft[]
+  area_json: string | null; // AssessmentAreaDraft
+  water_json: string | null; // AssessmentWaterDraft
+  calc_summary_json: string | null; // CalculationResultSummary[], backfilled after sync
 }
 
 export interface SyncItemStatus {

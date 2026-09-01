@@ -17,6 +17,11 @@ export type RootStackParamList = {
   // in-flight deep link or rollback still works; only HomeScreen.tsx no longer points at them.
   EwsPicker: { scope?: 'HPT' | 'Yield Making' | 'Agro' | 'WM' } | undefined;
   EwsForm: { ews_id: string };
+  // V3.1 Universal Assessment Form (BRD_Mobile_V3_1.docx): PRIMARY entry point for 29 of the 31
+  // EWS indicators (see domain/assessmentSchema.ts + services/assessmentEngine.js) - one visit,
+  // many pokok, backend computes every relevant EWS result. EwsPicker/EwsForm above stay
+  // available for the remainder (Yield Making, Pokok Doyong) and as a manual fallback.
+  Assessment: undefined;
   SensusMenu: undefined;
   SensusUPDKS: undefined;
   SensusTikus: undefined;

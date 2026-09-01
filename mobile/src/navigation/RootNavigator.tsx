@@ -7,6 +7,7 @@ import MainTabs from './MainTabs';
 import DeteksiFormScreen from '../screens/DeteksiFormScreen';
 import EwsPickerScreen from '../screens/EwsPickerScreen';
 import EwsFormScreen from '../screens/EwsFormScreen';
+import AssessmentScreen from '../screens/AssessmentScreen';
 import SensusMenuScreen from '../screens/SensusMenuScreen';
 import SensusUPDKSScreen from '../screens/sensus/SensusUPDKSScreen';
 import SensusTikusScreen from '../screens/sensus/SensusTikusScreen';
@@ -53,6 +54,7 @@ export default function RootNavigator() {
             <Stack.Screen name="Deteksi" component={DeteksiFormScreen} options={{ title: 'Deteksi HPT' }} />
             <Stack.Screen name="EwsPicker" component={EwsPickerScreen} options={{ title: 'Observasi EWS' }} />
             <Stack.Screen name="EwsForm" component={EwsFormScreen} options={{ title: 'Input Data EWS' }} />
+            <Stack.Screen name="Assessment" component={AssessmentScreen} options={{ title: 'Assessment Lapangan' }} />
             <Stack.Screen name="SensusMenu" component={SensusMenuScreen} options={{ title: 'Sensus' }} />
             <Stack.Screen name="SensusUPDKS" component={SensusUPDKSScreen} options={{ title: 'Sensus UPDKS' }} />
             <Stack.Screen name="SensusTikus" component={SensusTikusScreen} options={{ title: 'Sensus Tikus' }} />
