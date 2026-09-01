@@ -263,6 +263,7 @@ function computeIndicatorResult(hpt_code, input_payload, blok, opts = {}) {
     sourceType: opts.sourceType || 'SENSUS',
     sourceId: opts.sourceId,
     forced_kandidat_pengendalian: !!computed.forced_kandidat_pengendalian,
+    context: opts.context || 'SENSUS',
   });
 
   const rule_version_id = recordRuleVersion({

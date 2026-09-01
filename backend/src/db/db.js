@@ -76,10 +76,31 @@ function migrateAlertStatusV2() {
   db.exec(`UPDATE incident SET status='VERIFIED', updated_at=updated_at WHERE status='MONITORING'`);
 }
 
+// V3.1: friendly EWS-01..EWS-31 alias over the existing ews_dictionary rows (BRD_Mobile_V3_1 /
+// BRD_Backend_Addendum_V3_1's "EWS Master 31" numbering) -- see seedAssessmentMappingV31.js for
+// how it's populated. Does not replace or renumber the existing ews_id (HPT-.../AGR-.../YM-.../
+// WM-...) which stays canonical for Import/Export Center, incident/alert history, etc.
+function migrateV31Columns() {
+  tryAddColumn('ews_dictionary', `alias_ews_id TEXT`);
+  tryAddColumn('threshold', `context TEXT`);
+  // Backfill: WATER_MANAGEMENT is the only hpt_id with two formula rows measuring different
+  // quantities in overlapping numeric ranges (water_level_cm in cm vs flooding_duration_hari in
+  // hari -- e.g. both have a "BERAT" band whose value can be 20+, one in cm one in hari), which
+  // without this tag lets classify() match a threshold row from the WRONG formula (found while
+  // building V3.1's assessmentEngine.js, the first caller to exercise both formulas back-to-back
+  // for the same visit). Scoped by satuan since that's how the two row-sets already differ; safe
+  // to re-run (UPDATE ... WHERE context IS NULL is itself idempotent).
+  db.exec(`UPDATE threshold SET context='WM_GENANGAN', updated_at=datetime('now')
+           WHERE context IS NULL AND satuan='hari' AND hpt_id IN (SELECT id FROM hpt WHERE code='WATER_MANAGEMENT')`);
+  db.exec(`UPDATE threshold SET context='YIELD_MAKING', updated_at=datetime('now')
+           WHERE context IS NULL AND satuan='cm' AND hpt_id IN (SELECT id FROM hpt WHERE code='WATER_MANAGEMENT')`);
+}
+
 loadSchema();
 migrateV2Columns();
 migrateV3AddendumColumns();
 migrateV4KbIndexColumns();
+migrateV31Columns();
 migrateAlertStatusV2();
 
 // V3: BRD_V3 EWS Dictionary (31 EWS_ID rows) references base hpt codes (TIKUS/UPDKS/...) that

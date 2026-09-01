@@ -106,6 +106,12 @@ CREATE TABLE IF NOT EXISTS threshold (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   hpt_id INTEGER NOT NULL REFERENCES hpt(id),
   species_id INTEGER REFERENCES species(id), -- NULL = applies to all species of this HPT
+  context TEXT, -- V3.1: mirrors formula.context; NULL = applies regardless of context (legacy
+                -- default, preserves every pre-V3.1 threshold row's behavior unchanged). Only
+                -- needed when one hpt_id carries >1 formula measuring different quantities in
+                -- the same value range (e.g. WATER_MANAGEMENT's water_level_cm vs
+                -- flooding_duration_hari) -- see migrateV31Columns()'s backfill in db.js and
+                -- thresholdEngine.js's getActiveThresholds() for why this was added.
   fase_tanaman TEXT NOT NULL, -- TBM1, TBM2, TBM3, TM, SEMUA
   kategori TEXT NOT NULL, -- NORMAL, RINGAN, SEDANG, BERAT, CRITICAL
   nilai_min REAL, -- NULL = -infinity
@@ -1009,3 +1015,149 @@ CREATE TRIGGER IF NOT EXISTS kb_chunk_au AFTER UPDATE ON kb_chunk BEGIN
   INSERT INTO kb_chunk_fts(kb_chunk_fts, rowid, content) VALUES ('delete', old.id, old.content);
   INSERT INTO kb_chunk_fts(rowid, content) VALUES (new.id, new.content);
 END;
+
+-- =====================================================================================
+-- ============ V3.1: UNIVERSAL ASSESSMENT FORM + ASSESSMENT MAPPING ENGINE ============
+-- =====================================================================================
+-- BRD_Mobile_V3_1.docx + BRD_Backend_Addendum_V3_1.docx: one field visit (Universal
+-- Assessment) captures raw per-pokok observations; the Assessment Mapping Engine (see
+-- services/assessmentEngine.js) turns those raw observations into potentially many EWS
+-- results by re-using the existing hpt/formula/threshold/rule_version/incident/alert
+-- machinery (ruleEngine.js's computeIndicatorResult) instead of a parallel classification
+-- engine. ews_dictionary.alias_ews_id (added via migrateV31Columns in db.js) carries the new
+-- EWS-01..EWS-31 numbering from BRD V3.1's "EWS Master 31" sheet as a friendly alias over the
+-- existing HPT-/AGR-/YM-/WM- codes -- old codes, incident/alert history and Import/Export
+-- Center are untouched.
+
+CREATE TABLE IF NOT EXISTS assessment (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  local_id TEXT,
+  server_id TEXT UNIQUE,
+  assessment_code TEXT UNIQUE, -- ASMT-YYYYMMDD-XXXX
+  user_id INTEGER REFERENCES user(id),
+  device_id TEXT,
+  estate_id INTEGER REFERENCES estate(id),
+  afdeling_id INTEGER REFERENCES afdeling(id),
+  blok_id INTEGER NOT NULL REFERENCES blok(id),
+  planting_stage TEXT, -- TM/TBM/TB-0, snapshotted from blok.status_tanaman at capture time
+  baris TEXT, -- jalur/baris sampel, free text (can be a list e.g. "3,13,23")
+  sampling_method TEXT,
+  sample_count INTEGER NOT NULL DEFAULT 0, -- how many pokok were actually recorded (denominator)
+  tanggal TEXT NOT NULL,
+  waktu_mulai TEXT,
+  waktu_selesai TEXT,
+  gps_lat REAL,
+  gps_lng REAL,
+  gps_accuracy REAL,
+  location_warning INTEGER NOT NULL DEFAULT 0,
+  catatan TEXT,
+  status TEXT NOT NULL DEFAULT 'SUBMITTED', -- SUBMITTED | CALCULATED | FAILED
+  petugas TEXT,
+  sync_status TEXT NOT NULL DEFAULT 'SYNCED',
+  sync_attempt INTEGER NOT NULL DEFAULT 0,
+  sync_error TEXT,
+  source TEXT NOT NULL DEFAULT 'API',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_assessment_blok ON assessment(blok_id);
+CREATE INDEX IF NOT EXISTS idx_assessment_tanggal ON assessment(tanggal);
+
+CREATE TABLE IF NOT EXISTS assessment_tree (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  assessment_id INTEGER NOT NULL REFERENCES assessment(id),
+  pokok_index INTEGER NOT NULL, -- 1..N within this assessment, not a permanent pokok number
+  status_pokok TEXT NOT NULL DEFAULT 'NORMAL', -- NORMAL | EXCEPTION
+  kondisi_json TEXT, -- JSON array of tags: KERDIL/ETIOLASI/SISIPAN/KASTRASI/SANITASI/TUMBANG/KOSONG_MATI/ABNORMAL
+  pruning TEXT DEFAULT 'NORMAL', -- NORMAL | UNDER | OVER
+  susunan_pelepah TEXT, -- NORMAL | TIDAK_SESUAI (TM only)
+  piringan TEXT, -- BAIK | TIDAK_BAIK
+  gulma_piringan_json TEXT, -- JSON array: VOPS/BROAD_LEAF/FERN/WOODIES/GRASSES
+  defisiensi_json TEXT, -- JSON array of {unsur, severity}
+  hama_json TEXT, -- JSON array of {jenis, catatan?}
+  foto_local_id TEXT,
+  foto_id INTEGER,
+  gps_lat REAL,
+  gps_lng REAL,
+  catatan TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_assessment_tree_assessment ON assessment_tree(assessment_id);
+
+CREATE TABLE IF NOT EXISTS assessment_area_observation (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  assessment_id INTEGER NOT NULL UNIQUE REFERENCES assessment(id),
+  gawangan TEXT, -- BAIK | TIDAK_BAIK
+  gulma_gawangan_json TEXT,
+  aplikasi_pupuk INTEGER NOT NULL DEFAULT 0,
+  jenis_pupuk TEXT,
+  tanggal_pupuk TEXT,
+  keterangan_pupuk TEXT,
+  by_product_json TEXT, -- JSON array: DDS/BA/FIBER
+  keterangan_by_product TEXT,
+  erosi TEXT, -- TIDAK_ADA | RINGAN | SEDANG | BERAT
+  foto_id INTEGER,
+  catatan TEXT,
+  kbh TEXT, -- BAIK | TIDAK_ADA | TIDAK_BAIK
+  beneficial_plants TEXT, -- BAIK | TIDAK_ADA | TIDAK_BAIK
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS assessment_water_observation (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  assessment_id INTEGER NOT NULL UNIQUE REFERENCES assessment(id),
+  drainase TEXT, -- BAIK | TIDAK_BAIK
+  water_level_cm REAL,
+  water_weir TEXT, -- BAIK | TIDAK_BAIK
+  kondisi_parit TEXT, -- BAIK | RUSAK | TERSUMBAT | LAINNYA
+  lama_genangan_hari REAL,
+  catatan TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Assessment Mapping Dictionary (EWS_Assessment_Mapping_Dictionary_V3_1.xlsx sheet "EWS
+-- Assessment Mapping") -- reference/display data only. services/assessmentEngine.js calls
+-- computeIndicatorResult() against the EXISTING hpt/formula/threshold tables rather than
+-- reading this table at runtime, so it documents the mapping without being a second source of
+-- calculation truth (BRD Addendum section 2 "mobile tidak menyimpan mapping hard-coded").
+CREATE TABLE IF NOT EXISTS assessment_mapping (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  assessment_param_id TEXT UNIQUE NOT NULL, -- ASM-001..040
+  category TEXT NOT NULL,
+  assessment_parameter TEXT NOT NULL,
+  input_type TEXT,
+  ews_id_list TEXT, -- raw text, e.g. "EWS-04/EWS-05/EWS-06" or NULL if unmapped
+  ews_indicator TEXT,
+  planting_stage TEXT,
+  calculation_or_use TEXT,
+  threshold_or_status TEXT,
+  required TEXT,
+  capture_level TEXT,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Raw vs derived (BRD Addendum section 7): one row per EWS indicator actually computed from a
+-- given assessment, keeping numerator/denominator/rate/threshold/rule_version for audit -- the
+-- incident/alert rows themselves still live in incident/alert exactly like every other V1-V3
+-- indicator, so Alert Center / dashboard need no V3.1-specific UI to see them.
+CREATE TABLE IF NOT EXISTS calculation_result (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  assessment_id INTEGER NOT NULL REFERENCES assessment(id),
+  ews_id TEXT NOT NULL, -- alias EWS-xx code
+  hpt_id INTEGER REFERENCES hpt(id),
+  numerator REAL,
+  denominator REAL,
+  rate REAL,
+  unit TEXT,
+  kategori TEXT,
+  ews_alert INTEGER NOT NULL DEFAULT 0,
+  incident_id INTEGER REFERENCES incident(id),
+  alert_id INTEGER REFERENCES alert(id),
+  rule_version_id INTEGER REFERENCES rule_version(id),
+  requires_manual_sensus INTEGER NOT NULL DEFAULT 0, -- Ulat/Ganoderma: symptom found -> recommend dedicated sensus, no direct classification
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_calculation_result_assessment ON calculation_result(assessment_id);
+CREATE INDEX IF NOT EXISTS idx_calculation_result_ews ON calculation_result(ews_id);

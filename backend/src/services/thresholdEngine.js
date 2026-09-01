@@ -26,8 +26,12 @@ function severityRank(k) {
   return i === -1 ? -1 : i;
 }
 
-/** Step: AMBIL THRESHOLD. Returns the latest-effective threshold row per kategori. */
-function getActiveThresholds(hpt_id, species_id, faseTanaman, asOfDate) {
+/** Step: AMBIL THRESHOLD. Returns the latest-effective threshold row per kategori.
+ *  `context` (optional, V3.1) disambiguates the rare hpt_id that carries more than one formula
+ *  over different quantities (see threshold.context's schema.sql comment) -- a row with
+ *  context IS NULL always applies (legacy default, matches every pre-V3.1 threshold row), a row
+ *  with a context set only applies when it matches the caller's context. */
+function getActiveThresholds(hpt_id, species_id, faseTanaman, asOfDate, context) {
   const rows = db
     .prepare(
       `SELECT t.* FROM threshold t
@@ -36,6 +40,7 @@ function getActiveThresholds(hpt_id, species_id, faseTanaman, asOfDate) {
          AND t.status = 'AKTIF'
          AND t.effective_date <= @asOfDate
          AND (t.fase_tanaman = @faseTanaman OR t.fase_tanaman = 'SEMUA')
+         AND (t.context IS NULL OR t.context = @context)
          AND (
            t.species_id IS NULL
            OR t.species_id = @species_id
@@ -44,7 +49,7 @@ function getActiveThresholds(hpt_id, species_id, faseTanaman, asOfDate) {
          )
        ORDER BY (t.fase_tanaman = @faseTanaman) DESC, t.effective_date DESC`
     )
-    .all({ hpt_id, species_id: species_id || null, faseTanaman, asOfDate });
+    .all({ hpt_id, species_id: species_id || null, faseTanaman, asOfDate, context: context || null });
 
   const latestByKategori = new Map();
   for (const r of rows) {
@@ -213,11 +218,13 @@ function resolveRecipients(alert) {
  * @param {number|null} p.species_id
  * @param {number} p.blok_id
  * @param {number} p.nilai_hasil
- * @param {'DETECTION'|'SENSUS'|'MORTALITY'} p.sourceType
+ * @param {'DETECTION'|'SENSUS'|'MORTALITY'|'ASSESSMENT'} p.sourceType
  * @param {number} [p.sourceId]
  * @param {boolean} [p.forced_kandidat_pengendalian] Rayap-style ambang-ekonomi-0% override
+ * @param {string} [p.context] V3.1: disambiguates threshold rows when hpt_id has >1 formula
+ *   over different quantities (see getActiveThresholds() above)
  */
-function runThresholdEngine({ hpt_id, species_id = null, blok_id, nilai_hasil, sourceType, sourceId, forced_kandidat_pengendalian = false }) {
+function runThresholdEngine({ hpt_id, species_id = null, blok_id, nilai_hasil, sourceType, sourceId, forced_kandidat_pengendalian = false, context = null }) {
   // VALIDASI
   const blok = db.prepare('SELECT * FROM blok WHERE id=?').get(blok_id);
   if (!blok) throw new Error('Blok tidak ditemukan');
@@ -230,7 +237,7 @@ function runThresholdEngine({ hpt_id, species_id = null, blok_id, nilai_hasil, s
   const faseTanaman = blok.status_tanaman || 'SEMUA';
 
   // AMBIL THRESHOLD
-  const thresholds = getActiveThresholds(hpt_id, species_id, faseTanaman, todayISO());
+  const thresholds = getActiveThresholds(hpt_id, species_id, faseTanaman, todayISO(), context);
 
   // KLASIFIKASI
   let matched = classify(thresholds, nilai_hasil);

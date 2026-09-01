@@ -17,6 +17,11 @@ runAllSeedImports(db);
 // (TIKUS/UPDKS/...) it depends on -- see seedEwsDictionaryV3.js's header comment.
 require('./db/seedEwsDictionaryV3').seedEwsDictionaryV3(db);
 
+// BRD V3.1 Assessment Mapping Dictionary + EWS-01..EWS-31 alias -- idempotent, must run after
+// seedEwsDictionaryV3 above (it updates ews_dictionary rows that seed creates). See
+// seedAssessmentMappingV31.js's header comment.
+require('./db/seedAssessmentMappingV31').seedAssessmentMappingV31(db);
+
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {

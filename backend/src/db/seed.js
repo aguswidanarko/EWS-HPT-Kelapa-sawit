@@ -550,6 +550,12 @@ function main() {
   const ewsDictResult = seedEwsDictionaryV3(db);
   if (!ewsDictResult.skipped) console.log(`EWS Dictionary V3 seeded: ${ewsDictResult.committed} EWS_ID rows.`);
 
+  // BRD V3.1 Assessment Mapping Dictionary + EWS-01..EWS-31 alias -- must run after
+  // seedEwsDictionaryV3 above (see seedAssessmentMappingV31.js's header comment).
+  const { seedAssessmentMappingV31 } = require('./seedAssessmentMappingV31');
+  const asmResult = seedAssessmentMappingV31(db);
+  if (!asmResult.skipped) console.log(`Assessment Mapping V3.1 seeded: ${asmResult.mappingRows} rows, ${asmResult.aliased} EWS aliases.`);
+
   console.log('\nSeed complete.');
   console.log('Demo login credentials (password for all: password123):');
   for (const u of userDefs) console.log(`  ${u.email}  (${roles.find((r) => roleId[r[0]] === u.role_id)[0]})`);

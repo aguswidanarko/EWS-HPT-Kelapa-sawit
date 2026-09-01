@@ -63,6 +63,10 @@ app.use('/api/ai-assistant', require('./routes/aiAssistant'));
 // ===================== V3 Addendum 2: Master Wilayah import (Region/PT/Rayon/Afdeling) =====================
 app.use('/api/master-wilayah-import', require('./routes/masterWilayahImport'));
 
+// ===================== V3.1: Universal Assessment Form + Mapping Engine =====================
+// See routes/assessment.js and services/assessmentEngine.js header comments.
+app.use('/api/assessment', require('./routes/assessment'));
+
 app.use((req, res) => res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` }));
 app.use(errorHandler);
 
