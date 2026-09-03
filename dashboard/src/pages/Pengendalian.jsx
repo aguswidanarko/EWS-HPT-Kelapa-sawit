@@ -30,7 +30,7 @@ export default function Pengendalian() {
   const columns = useMemo(() => [
     { key: 'tanggal_mulai', header: 'Mulai', render: (r) => fmtDate(r.tanggal_mulai) },
     { key: 'tanggal_selesai', header: 'Selesai', render: (r) => fmtDate(r.tanggal_selesai) },
-    { key: 'blok', header: 'Estate / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
+    { key: 'blok', header: 'PT / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
     { key: 'hpt', header: 'HPT', render: (r) => md.hptName(r.hpt_id) },
     { key: 'metode_pengendalian', header: 'Metode' },
     { key: 'luas_serangan', header: 'Luas Serangan', render: (r) => fmtNum(r.luas_serangan) },

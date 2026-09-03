@@ -3,21 +3,27 @@ import { masterApi } from '../api/resources';
 import { useMasterData } from '../context/MasterDataContext';
 import { useAuth, canWriteMaster, canWriteMasterHptThreshold } from '../context/AuthContext';
 import MasterCrud from '../components/MasterCrud';
+import MasterBlokImport from '../components/MasterBlokImport';
 
-const TABS = ['Estate', 'Afdeling', 'Blok', 'Indikator', 'Kategori Indikator', 'Species', 'Threshold'];
+// V3.2: Region -> Bisnis Unit -> PT (estate, tabel/field tetap "estate" di kode -- hanya label UI
+// yang berganti dari "Estate" ke "PT" mengikuti istilah pada Master Blok Terpusat) -> Afdeling ->
+// Blok. "Master Blok (Upload)" adalah cara utama mengisi PT/Afdeling/Blok sekarang (lihat
+// MasterBlokImport.jsx); tab Region/Bisnis Unit/PT/Afdeling/Blok di bawah tetap ada untuk
+// koreksi/tambahan manual satu-per-satu oleh admin.
+const TABS = ['Master Blok (Upload)', 'Region', 'Bisnis Unit', 'PT', 'Afdeling', 'Blok', 'Indikator', 'Kategori Indikator', 'Species', 'Threshold'];
 const INDICATOR_TYPES = ['HPT', 'YIELD_MAKING', 'AGRONOMY', 'DEFISIENSI_HARA'];
 
 export default function MasterData() {
   const { user } = useAuth();
   const md = useMasterData();
-  const [tab, setTab] = useState('Estate');
+  const [tab, setTab] = useState('Master Blok (Upload)');
 
   return (
     <div>
       <div className="page-header">
         <div>
           <h1>Master Data</h1>
-          <p>Estate, Afdeling, Blok, HPT, Species, dan Threshold — semua configurable, tidak hard-coded di aplikasi.</p>
+          <p>Region, Bisnis Unit, PT, Afdeling, Blok, HPT, Species, dan Threshold — semua configurable, tidak hard-coded di aplikasi. Master Blok (Region/Bisnis Unit/PT/Afdeling/Blok) hanya bisa diubah oleh Admin.</p>
         </div>
       </div>
 
@@ -27,11 +33,14 @@ export default function MasterData() {
         ))}
       </div>
 
-      {tab === 'Estate' && (
+      {tab === 'Master Blok (Upload)' && <MasterBlokImport onCommitted={md.reload} />}
+
+      {tab === 'Region' && (
         <MasterCrud
-          title="Estate"
+          title="Region"
+          description="Level teratas hierarki lokasi (mis. Riau, Kalbar, Kaltim). Biasanya cukup terisi otomatis lewat Master Blok (Upload); tab ini untuk koreksi manual."
           canWrite={canWriteMaster(user)}
-          api={masterApi.estates}
+          api={masterApi.regions}
           onChanged={md.reload}
           columns={[
             { key: 'code', header: 'Kode' },
@@ -40,6 +49,48 @@ export default function MasterData() {
           fields={[
             { key: 'code', label: 'Kode', required: true },
             { key: 'name', label: 'Nama', required: true },
+          ]}
+        />
+      )}
+
+      {tab === 'Bisnis Unit' && (
+        <MasterCrud
+          title="Bisnis Unit"
+          description="Mengelompokkan beberapa PT di bawah satu Region (mis. KTBM menaungi 4 PT/kebun). Biasanya cukup terisi otomatis lewat Master Blok (Upload)."
+          canWrite={canWriteMaster(user)}
+          api={masterApi.businessUnits}
+          onChanged={md.reload}
+          columns={[
+            { key: 'code', header: 'Kode' },
+            { key: 'name', header: 'Nama' },
+            { key: 'region_id', header: 'Region', render: (r) => md.regionName(r.region_id) },
+          ]}
+          fields={[
+            { key: 'region_id', label: 'Region', type: 'select', required: true, options: md.regions.map((r) => ({ value: r.id, label: r.name })) },
+            { key: 'code', label: 'Kode', required: true },
+            { key: 'name', label: 'Nama', required: true },
+          ]}
+        />
+      )}
+
+      {tab === 'PT' && (
+        <MasterCrud
+          title="PT"
+          description="Sebelumnya disebut 'Estate'. Biasanya cukup terisi otomatis lewat Master Blok (Upload); tab ini untuk koreksi manual (mis. mengganti Region/Bisnis Unit satu PT)."
+          canWrite={canWriteMaster(user)}
+          api={masterApi.estates}
+          onChanged={md.reload}
+          columns={[
+            { key: 'code', header: 'Kode PT' },
+            { key: 'name', header: 'Nama PT' },
+            { key: 'region_id', header: 'Region', render: (r) => md.regionName(r.region_id) },
+            { key: 'bisnis_unit_id', header: 'Bisnis Unit', render: (r) => md.businessUnitName(r.bisnis_unit_id) },
+          ]}
+          fields={[
+            { key: 'region_id', label: 'Region', type: 'select', options: md.regions.map((r) => ({ value: r.id, label: r.name })) },
+            { key: 'bisnis_unit_id', label: 'Bisnis Unit', type: 'select', options: md.businessUnits.map((b) => ({ value: b.id, label: b.name })) },
+            { key: 'code', label: 'Kode PT', required: true },
+            { key: 'name', label: 'Nama PT', required: true },
           ]}
         />
       )}
@@ -53,10 +104,10 @@ export default function MasterData() {
           columns={[
             { key: 'code', header: 'Kode' },
             { key: 'name', header: 'Nama' },
-            { key: 'estate_id', header: 'Estate', render: (r) => md.estateName(r.estate_id) },
+            { key: 'estate_id', header: 'PT', render: (r) => md.estateName(r.estate_id) },
           ]}
           fields={[
-            { key: 'estate_id', label: 'Estate', type: 'select', required: true, options: md.estates.map((e) => ({ value: e.id, label: e.name })) },
+            { key: 'estate_id', label: 'PT', type: 'select', required: true, options: md.estates.map((e) => ({ value: e.id, label: e.name })) },
             { key: 'code', label: 'Kode', required: true },
             { key: 'name', label: 'Nama', required: true },
           ]}
@@ -75,6 +126,7 @@ export default function MasterData() {
             { key: 'afdeling_id', header: 'Afdeling', render: (r) => md.afdelingName(r.afdeling_id) },
             { key: 'luas', header: 'Luas (ha)' },
             { key: 'tahun_tanam', header: 'Tahun Tanam' },
+            { key: 'jumlah_pokok', header: 'Jml Pokok' },
             { key: 'status_tanaman', header: 'Status Tanaman' },
             { key: 'jumlah_baris', header: 'Jml Baris' },
           ]}
@@ -84,6 +136,7 @@ export default function MasterData() {
             { key: 'name', label: 'Nama', required: true },
             { key: 'luas', label: 'Luas (ha)', type: 'number' },
             { key: 'tahun_tanam', label: 'Tahun Tanam', type: 'number' },
+            { key: 'jumlah_pokok', label: 'Jumlah Pokok (Total Stand)', type: 'number' },
             { key: 'status_tanaman', label: 'Status Tanaman', type: 'select', options: [
               { value: 'TBM1', label: 'TBM1' }, { value: 'TBM2', label: 'TBM2' }, { value: 'TBM3', label: 'TBM3' }, { value: 'TM', label: 'TM' },
             ] },

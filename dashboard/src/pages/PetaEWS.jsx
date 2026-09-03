@@ -144,7 +144,7 @@ export default function PetaEWS() {
         </div>
         {canWriteMasterHptThreshold(user) && (
           <button className="btn" onClick={() => setUploadOpen((v) => !v)}>
-            {uploadOpen ? 'Tutup Upload GeoJSON' : 'Upload Peta Estate/Afdeling'}
+            {uploadOpen ? 'Tutup Upload GeoJSON' : 'Upload Peta PT/Afdeling'}
           </button>
         )}
       </div>
@@ -306,7 +306,7 @@ function BlokDetailPanel({ detail, onClose }) {
         <button className="close-x" onClick={onClose}>&times;</button>
       </div>
       <div className="small-muted" style={{ marginBottom: 10 }}>
-        {detail.afdeling?.name} — Estate #{detail.afdeling?.estate_id}
+        {detail.afdeling?.name} — PT #{detail.afdeling?.estate_id}
       </div>
       <div className="detail-grid">
         <div className="detail-item"><div className="dl">Luas</div><div className="dv">{fmtNum(detail.luas)} ha</div></div>
@@ -424,11 +424,11 @@ function GeoJsonUploadPanel({ onDone }) {
 
   return (
     <div className="card card-pad" style={{ marginBottom: 16 }}>
-      <div className="section-title mt-0">Upload Peta Estate/Afdeling (GeoJSON)</div>
+      <div className="section-title mt-0">Upload Peta PT/Afdeling (GeoJSON)</div>
       <div className="toolbar">
         <Field label="Tipe Entity">
           <select value={entityType} onChange={(e) => { setEntityType(e.target.value); setEntityId(''); }}>
-            <option value="ESTATE">Estate</option>
+            <option value="ESTATE">PT</option>
             <option value="AFDELING">Afdeling</option>
           </select>
         </Field>

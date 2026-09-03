@@ -78,7 +78,7 @@ export default function Layout() {
           <div className="sidebar-brand-mark">EWS</div>
           <div className="sidebar-brand-text">
             <strong>EWS Plantation</strong>
-            <span>HPT + Yield Making + Agronomy</span>
+            <span>HPT + Yield Making + Agronomy — v3.2</span>
           </div>
         </div>
         <nav className="sidebar-nav">

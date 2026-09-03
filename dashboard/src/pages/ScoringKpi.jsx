@@ -96,7 +96,7 @@ function EntriTab({ user }) {
 
   const columns = useMemo(() => [
     { key: 'period_month', header: 'Periode' },
-    { key: 'estate_id', header: 'Estate', render: (r) => (r.estate_id ? md.estateName(r.estate_id) : 'Semua') },
+    { key: 'estate_id', header: 'PT', render: (r) => (r.estate_id ? md.estateName(r.estate_id) : 'Semua') },
     { key: 'afdeling_id', header: 'Afdeling', render: (r) => (r.afdeling_id ? md.afdelingName(r.afdeling_id) : 'Semua') },
     { key: 'hpt_id', header: 'Indikator', render: (r) => (r.hpt_id ? md.hptName(r.hpt_id) : '-') },
     { key: 'criteria_id', header: 'Kriteria', render: (r) => criteriaById[r.criteria_id]?.name || `#${r.criteria_id}` },
@@ -108,7 +108,7 @@ function EntriTab({ user }) {
     <div>
       <div className="toolbar">
         <Field label="Periode (YYYY-MM)"><input placeholder="2026-08" value={filters.period_month} onChange={(e) => setFilters((f) => ({ ...f, period_month: e.target.value }))} /></Field>
-        <Field label="Estate">
+        <Field label="PT">
           <select value={filters.estate_id} onChange={(e) => setFilters((f) => ({ ...f, estate_id: e.target.value }))}>
             <option value="">Semua</option>
             {md.estates.map((es) => <option key={es.id} value={es.id}>{es.name}</option>)}
@@ -181,7 +181,7 @@ function EntryCreateModal({ md, criteria, onClose, onCreated }) {
           <input required type="number" step="any" value={form.poin_diberikan} onChange={(e) => setForm((v) => ({ ...v, poin_diberikan: e.target.value }))} />
         </div>
         <div className="field">
-          <label>Estate</label>
+          <label>PT</label>
           <select value={form.estate_id} onChange={(e) => setForm((v) => ({ ...v, estate_id: e.target.value }))}>
             <option value="">-</option>
             {md.estates.map((es) => <option key={es.id} value={es.id}>{es.name}</option>)}
@@ -243,7 +243,7 @@ function RekapTab() {
     <div>
       <div className="toolbar">
         <Field label="Periode (YYYY-MM)"><input value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)} /></Field>
-        <Field label="Estate">
+        <Field label="PT">
           <select value={estateId} onChange={(e) => setEstateId(e.target.value)}>
             <option value="">Semua</option>
             {md.estates.map((es) => <option key={es.id} value={es.id}>{es.name}</option>)}

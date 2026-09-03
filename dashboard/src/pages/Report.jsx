@@ -10,7 +10,7 @@ const REPORT_TYPES = [
   { key: 'monthly', label: 'EWS Monthly Report', endpoint: 'monthly' },
   { key: 'by-blok', label: 'Laporan per Blok', endpoint: 'by-blok' },
   { key: 'by-afdeling', label: 'Laporan per Afdeling', endpoint: 'by-afdeling' },
-  { key: 'by-estate', label: 'Laporan per Estate', endpoint: 'by-estate' },
+  { key: 'by-estate', label: 'Laporan per PT', endpoint: 'by-estate' },
   { key: 'by-hpt', label: 'Laporan per HPT', endpoint: 'by-hpt' },
   { key: 'trend', label: 'Trend Laporan (Deteksi)', endpoint: 'trend' },
   { key: 'treatment-service', label: 'Treatment & Service', endpoint: 'treatment-service' },
@@ -82,7 +82,7 @@ export default function Report() {
       <div className="page-header">
         <div>
           <h1>Report</h1>
-          <p>Laporan Deteksi/Sensus/Pengendalian/Mortalitas/Alert/HPT per Blok/Afdeling/Estate, Trend, Treatment/Service, EWS Daily/Monthly Report.</p>
+          <p>Laporan Deteksi/Sensus/Pengendalian/Mortalitas/Alert/HPT per Blok/Afdeling/PT, Trend, Treatment/Service, EWS Daily/Monthly Report.</p>
         </div>
       </div>
 

@@ -32,7 +32,7 @@ export default function IncidentManagement() {
   const columns = useMemo(() => [
     { key: 'incident_code', header: 'Incident Code', render: (r) => <Link to={`/incidents/${r.id}`}>{r.incident_code}</Link> },
     { key: 'hpt_name', header: 'HPT' },
-    { key: 'blok', header: 'Estate / Afdeling / Blok', render: (r) => `${r.estate_name} / ${r.afdeling_name} / ${r.blok_code}` },
+    { key: 'blok', header: 'PT / Afdeling / Blok', render: (r) => `${r.estate_name} / ${r.afdeling_name} / ${r.blok_code}` },
     { key: 'severity', header: 'Severity', render: (r) => <SeverityBadge severity={r.severity} /> },
     { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
     { key: 'opened_at', header: 'Dibuka', render: (r) => fmtDateTime(r.opened_at) },

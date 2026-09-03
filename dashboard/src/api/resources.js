@@ -87,6 +87,20 @@ export const photosApi = {
 
 // ---- Master data ----
 export const masterApi = {
+  // V3.2: Region -> Bisnis Unit -> PT (estate) -> Afdeling -> Blok. Both regions and
+  // businessUnits are already-existing/new generic CRUD endpoints (see backend/src/routes/masterData.js).
+  regions: {
+    list: () => unwrap(client.get('/master/regions')),
+    create: (d) => client.post('/master/regions', d).then((r) => r.data),
+    update: (id, d) => client.put(`/master/regions/${id}`, d).then((r) => r.data),
+    remove: (id) => client.delete(`/master/regions/${id}`).then((r) => r.data),
+  },
+  businessUnits: {
+    list: () => unwrap(client.get('/master/bisnis-units')),
+    create: (d) => client.post('/master/bisnis-units', d).then((r) => r.data),
+    update: (id, d) => client.put(`/master/bisnis-units/${id}`, d).then((r) => r.data),
+    remove: (id) => client.delete(`/master/bisnis-units/${id}`).then((r) => r.data),
+  },
   estates: {
     list: () => unwrap(client.get('/master/estates')),
     create: (d) => client.post('/master/estates', d).then((r) => r.data),
@@ -261,6 +275,28 @@ export const importApi = {
 export const importPisp1Api = {
   preview: (formData) => client.post('/import/pisp1/preview', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data),
   commit: (body) => client.post('/import/pisp1/commit', body).then((r) => r.data),
+};
+
+// ---- V3.2: Master Blok Terpusat upload (3-sheet MASTER_PT/MASTER_AFD/MASTER_BLOK workbook) ----
+// Admin-only end to end (enforced server-side too). preview -> commit (upsert, never deletes) ->
+// prune (separate explicit step, only removes rows with zero remaining historical references).
+export const masterBlokImportApi = {
+  templateUrl: () => `${client.defaults.baseURL}/master-blok-import/template`,
+  preview: (formData) => client.post('/master-blok-import/preview', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data),
+  commit: (body) => client.post('/master-blok-import/commit', body).then((r) => r.data),
+  prune: (body) => client.post('/master-blok-import/prune', body).then((r) => r.data),
+  log: () => unwrap(client.get('/master-blok-import/log')),
+};
+
+// ---- V3.2: Master User Mobile Apps per Afdeling upload (1-sheet MASTER_AFD workbook: Kode
+// PT/Afdeling/User Mobile/Password) -- bulk-provisions one shared PETUGAS_LAPANGAN login per
+// Afdeling. Admin-only end to end (enforced server-side too). preview -> commit (upsert by
+// email, never deletes/deactivates existing accounts).
+export const masterUserMobileImportApi = {
+  templateUrl: () => `${client.defaults.baseURL}/master-user-mobile-import/template`,
+  preview: (formData) => client.post('/master-user-mobile-import/preview', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data),
+  commit: (body) => client.post('/master-user-mobile-import/commit', body).then((r) => r.data),
+  log: () => unwrap(client.get('/master-user-mobile-import/log')),
 };
 
 // ---- Reports ----

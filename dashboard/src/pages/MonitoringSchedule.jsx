@@ -107,7 +107,7 @@ export default function MonitoringSchedule() {
               { key: 'tanggal_rencana', header: 'Tanggal Rencana', render: (r) => fmtDate(r.tanggal_rencana) },
               { key: 'jenis_kegiatan', header: 'Jenis Kegiatan' },
               { key: 'hpt_id', header: 'Indikator', render: (r) => (r.hpt_id ? md.hptName(r.hpt_id) : '-') },
-              { key: 'blok', header: 'Estate / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
+              { key: 'blok', header: 'PT / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
               { key: 'user_id', header: 'PIC', render: (r) => (r.user_id ? md.userName(r.user_id) : '-') },
               { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
               {
@@ -115,7 +115,7 @@ export default function MonitoringSchedule() {
               },
             ]}
             fields={[
-              { key: 'estate_id', label: 'Estate', type: 'select', required: true, options: md.estates.map((e) => ({ value: e.id, label: e.name })) },
+              { key: 'estate_id', label: 'PT', type: 'select', required: true, options: md.estates.map((e) => ({ value: e.id, label: e.name })) },
               { key: 'afdeling_id', label: 'Afdeling', type: 'select', required: true, options: md.afdelings.map((a) => ({ value: a.id, label: a.name })) },
               { key: 'blok_id', label: 'Blok', type: 'select', required: true, options: md.bloks.map((b) => ({ value: b.id, label: `${b.code} — ${b.name}` })) },
               { key: 'jenis_kegiatan', label: 'Jenis Kegiatan', type: 'select', required: true, options: JENIS_KEGIATAN.map((j) => ({ value: j, label: j })) },

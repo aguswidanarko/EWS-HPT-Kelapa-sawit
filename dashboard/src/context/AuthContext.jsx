@@ -54,6 +54,10 @@ export const ROLES = {
   PETUGAS_DETEKSI: 'PETUGAS_DETEKSI',
   PETUGAS_SENSUS: 'PETUGAS_SENSUS',
   PETUGAS_PENGENDALIAN: 'PETUGAS_PENGENDALIAN',
+  // V3.2: generic field officer, one shared mobile login per Afdeling ("Master User Mobile Apps
+  // per Afdeling") -- can submit every field data type from a single account. Mirrors backend
+  // services/permissions.js PETUGAS_LAPANGAN.
+  PETUGAS_LAPANGAN: 'PETUGAS_LAPANGAN',
   // V2 (SPEC_V2.md section 1 item 7)
   RISET: 'RISET',
   VIEWER_MANAGEMENT: 'VIEWER_MANAGEMENT',
@@ -101,26 +105,26 @@ export function canViewAuditLog(user) {
 }
 
 export function canCreateDetection(user) {
-  return hasRole(user, ROLES.ADMIN, ROLES.PETUGAS_DETEKSI, ROLES.RND_FOD);
+  return hasRole(user, ROLES.ADMIN, ROLES.PETUGAS_DETEKSI, ROLES.RND_FOD, ROLES.PETUGAS_LAPANGAN);
 }
 
 export function canCreateSensus(user) {
-  return hasRole(user, ROLES.ADMIN, ROLES.PETUGAS_SENSUS, ROLES.RND_FOD);
+  return hasRole(user, ROLES.ADMIN, ROLES.PETUGAS_SENSUS, ROLES.RND_FOD, ROLES.PETUGAS_LAPANGAN);
 }
 
 export function canCreateTreatment(user) {
-  return hasRole(user, ROLES.ADMIN, ROLES.PETUGAS_PENGENDALIAN, ROLES.ASKEP_ASISTEN);
+  return hasRole(user, ROLES.ADMIN, ROLES.PETUGAS_PENGENDALIAN, ROLES.ASKEP_ASISTEN, ROLES.PETUGAS_LAPANGAN);
 }
 
 export function canCreateMortality(user) {
-  return hasRole(user, ROLES.ADMIN, ROLES.PETUGAS_PENGENDALIAN);
+  return hasRole(user, ROLES.ADMIN, ROLES.PETUGAS_PENGENDALIAN, ROLES.PETUGAS_LAPANGAN);
 }
 
 // ---- V2 role helpers (SPEC_V2.md) ----------------------------------
 
 // Mirrors backend routes/yieldMaking.js CREATE_ROLES.
 export function canCreateYieldMaking(user) {
-  return hasRole(user, ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.RND_FOD, ROLES.PETUGAS_SENSUS, ROLES.ASKEP_ASISTEN);
+  return hasRole(user, ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.RND_FOD, ROLES.PETUGAS_SENSUS, ROLES.ASKEP_ASISTEN, ROLES.PETUGAS_LAPANGAN);
 }
 
 // Mirrors backend routes/leafAnalysis.js WRITE_ROLES (Riset lab-side record).
@@ -130,7 +134,7 @@ export function canManageLeafAnalysis(user) {
 
 // Mirrors backend routes/defisiensiHara.js POST roles (field findings by Mandor/Petugas).
 export function canCreateDefisiensiHaraTemuan(user) {
-  return hasRole(user, ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.PETUGAS_DETEKSI, ROLES.PETUGAS_SENSUS, ROLES.ASKEP_ASISTEN, ROLES.RND_FOD);
+  return hasRole(user, ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.PETUGAS_DETEKSI, ROLES.PETUGAS_SENSUS, ROLES.ASKEP_ASISTEN, ROLES.RND_FOD, ROLES.PETUGAS_LAPANGAN);
 }
 
 export function canEditDefisiensiHaraTemuan(user) {
@@ -143,7 +147,7 @@ export function canCreateActionPlan(user) {
 }
 
 export function canUpdateActionPlan(user) {
-  return hasRole(user, ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.ASKEP_ASISTEN, ROLES.MANAGER, ROLES.RND_FOD, ROLES.PETUGAS_PENGENDALIAN);
+  return hasRole(user, ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.ASKEP_ASISTEN, ROLES.MANAGER, ROLES.RND_FOD, ROLES.PETUGAS_PENGENDALIAN, ROLES.PETUGAS_LAPANGAN);
 }
 
 export function canVerifyActionPlan(user) {

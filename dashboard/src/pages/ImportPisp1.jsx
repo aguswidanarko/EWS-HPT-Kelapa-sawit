@@ -71,7 +71,7 @@ export default function ImportPisp1({ onCommitted }) {
       {preview && (
         <div style={{ marginTop: 14 }}>
           <div className="small-muted" style={{ marginBottom: 8 }}>
-            Estate terdeteksi: <strong>{preview.estate.name}</strong> (kode <code>{preview.estate.code}</code>)
+            PT terdeteksi: <strong>{preview.estate.name}</strong> (kode <code>{preview.estate.code}</code>)
             {preview.estate.exists ? ' — sudah ada di Master Data.' : ' — BELUM ada, akan dibuat otomatis saat commit.'}
           </div>
 
@@ -142,7 +142,7 @@ export default function ImportPisp1({ onCommitted }) {
           <div style={{ marginBottom: 8 }}>
             Import selesai: <strong>{committed.totals.committed}</strong> record berhasil ({committed.totals.ews_alert_count} memicu EWS alert)
             {committed.totals.failed ? `, ${committed.totals.failed} gagal.` : '.'}
-            {' '}Estate <strong>{committed.estate.name}</strong>{committed.estate.created ? ' (baru dibuat)' : ''},
+            {' '}PT <strong>{committed.estate.name}</strong>{committed.estate.created ? ' (baru dibuat)' : ''},
             {' '}{committed.afdelings_created} afdeling baru, {committed.bloks_created} blok baru.
           </div>
           <div className="table-wrap">

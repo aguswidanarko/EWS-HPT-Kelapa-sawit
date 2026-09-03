@@ -4,6 +4,8 @@ import { masterApi, usersApi } from '../api/resources';
 const MasterDataContext = createContext(null);
 
 export function MasterDataProvider({ children }) {
+  const [regions, setRegions] = useState([]);
+  const [businessUnits, setBusinessUnits] = useState([]);
   const [estates, setEstates] = useState([]);
   const [afdelings, setAfdelings] = useState([]);
   const [bloks, setBloks] = useState([]);
@@ -15,6 +17,8 @@ export function MasterDataProvider({ children }) {
 
   const reload = useCallback(() => {
     return Promise.all([
+      masterApi.regions.list().catch(() => []),
+      masterApi.businessUnits.list().catch(() => []),
       masterApi.estates.list().catch(() => []),
       masterApi.afdelings.list().catch(() => []),
       masterApi.bloks.list().catch(() => []),
@@ -22,7 +26,9 @@ export function MasterDataProvider({ children }) {
       masterApi.species.list().catch(() => []),
       usersApi.list().catch(() => []),
       masterApi.ewsCategories.list().catch(() => []),
-    ]).then(([e, a, b, h, s, u, c]) => {
+    ]).then(([r, bu, e, a, b, h, s, u, c]) => {
+      setRegions(r || []);
+      setBusinessUnits(bu || []);
       setEstates(e || []);
       setAfdelings(a || []);
       setBloks(b || []);
@@ -41,6 +47,8 @@ export function MasterDataProvider({ children }) {
   const maps = useMemo(() => {
     const byId = (arr) => Object.fromEntries((arr || []).map((x) => [String(x.id), x]));
     return {
+      regionById: byId(regions),
+      businessUnitById: byId(businessUnits),
       estateById: byId(estates),
       afdelingById: byId(afdelings),
       blokById: byId(bloks),
@@ -49,10 +57,12 @@ export function MasterDataProvider({ children }) {
       userById: byId(users),
       ewsCategoryById: byId(ewsCategories),
     };
-  }, [estates, afdelings, bloks, hpt, species, users, ewsCategories]);
+  }, [regions, businessUnits, estates, afdelings, bloks, hpt, species, users, ewsCategories]);
 
   const value = useMemo(() => ({
-    estates, afdelings, bloks, hpt, species, users, ewsCategories, loaded, reload, ...maps,
+    regions, businessUnits, estates, afdelings, bloks, hpt, species, users, ewsCategories, loaded, reload, ...maps,
+    regionName: (id) => maps.regionById[String(id)]?.name || (id ? `#${id}` : '-'),
+    businessUnitName: (id) => maps.businessUnitById[String(id)]?.name || (id ? `#${id}` : '-'),
     estateName: (id) => maps.estateById[String(id)]?.name || (id ? `#${id}` : '-'),
     afdelingName: (id) => maps.afdelingById[String(id)]?.name || (id ? `#${id}` : '-'),
     blokName: (id) => maps.blokById[String(id)]?.code || (id ? `#${id}` : '-'),
@@ -62,9 +72,12 @@ export function MasterDataProvider({ children }) {
     ewsCategoryName: (id) => maps.ewsCategoryById[String(id)]?.name || (id ? `#${id}` : '-'),
     bloksByAfdeling: (afdelingId) => bloks.filter((b) => String(b.afdeling_id) === String(afdelingId)),
     afdelingsByEstate: (estateId) => afdelings.filter((a) => String(a.estate_id) === String(estateId)),
+    // V3.2 hierarchy helpers: Region -> Bisnis Unit -> PT (estate).
+    businessUnitsByRegion: (regionId) => businessUnits.filter((b) => String(b.region_id) === String(regionId)),
+    estatesByBusinessUnit: (businessUnitId) => estates.filter((e) => String(e.bisnis_unit_id) === String(businessUnitId)),
     // Indicator table (hpt) narrowed by V2 indicator_type -- see SPEC_V2.md section 2.
     hptByIndicatorType: (type) => hpt.filter((h) => (h.indicator_type || 'HPT') === type),
-  }), [estates, afdelings, bloks, hpt, species, users, ewsCategories, loaded, reload, maps]);
+  }), [regions, businessUnits, estates, afdelings, bloks, hpt, species, users, ewsCategories, loaded, reload, maps]);
 
   return <MasterDataContext.Provider value={value}>{children}</MasterDataContext.Provider>;
 }

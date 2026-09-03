@@ -27,7 +27,7 @@ export default function Deteksi() {
 
   const columns = useMemo(() => [
     { key: 'tanggal', header: 'Tanggal', render: (r) => fmtDate(r.tanggal) },
-    { key: 'blok', header: 'Estate / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
+    { key: 'blok', header: 'PT / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
     { key: 'hpt', header: 'HPT', render: (r) => md.hptName(r.hpt_id) },
     { key: 'kondisi_indikator', header: 'Kondisi' },
     { key: 'jumlah_indikasi', header: 'Jumlah Indikasi', render: (r) => fmtNum(r.jumlah_indikasi) },
@@ -72,7 +72,7 @@ export default function Deteksi() {
         <Modal title={`Deteksi #${selected.id}`} onClose={() => setSelected(null)}>
           <div className="detail-grid">
             <div className="detail-item"><div className="dl">Tanggal / Waktu</div><div className="dv">{fmtDate(selected.tanggal)} {selected.waktu || ''}</div></div>
-            <div className="detail-item"><div className="dl">Estate</div><div className="dv">{md.estateName(selected.estate_id)}</div></div>
+            <div className="detail-item"><div className="dl">PT</div><div className="dv">{md.estateName(selected.estate_id)}</div></div>
             <div className="detail-item"><div className="dl">Afdeling</div><div className="dv">{md.afdelingName(selected.afdeling_id)}</div></div>
             <div className="detail-item"><div className="dl">Blok</div><div className="dv">{md.blokName(selected.blok_id)}</div></div>
             <div className="detail-item"><div className="dl">Baris / Posisi</div><div className="dv">{selected.baris ?? '-'} / {selected.posisi ?? '-'}</div></div>

@@ -41,7 +41,7 @@ export default function YieldModulePage({ title, description, api, fields, listE
 
   const columns = useMemo(() => [
     { key: 'tanggal', header: 'Tanggal', render: (r) => fmtDate(r.tanggal) },
-    { key: 'blok', header: 'Estate / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
+    { key: 'blok', header: 'PT / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
     ...listFields.map((f) => ({
       key: f.key,
       header: f.label,
@@ -86,7 +86,7 @@ export default function YieldModulePage({ title, description, api, fields, listE
         <Modal title={`${title} #${selected.id}`} onClose={() => setSelected(null)}>
           <div className="detail-grid">
             <div className="detail-item"><div className="dl">Tanggal</div><div className="dv">{fmtDate(selected.tanggal)}</div></div>
-            <div className="detail-item"><div className="dl">Estate</div><div className="dv">{md.estateName(selected.estate_id)}</div></div>
+            <div className="detail-item"><div className="dl">PT</div><div className="dv">{md.estateName(selected.estate_id)}</div></div>
             <div className="detail-item"><div className="dl">Afdeling</div><div className="dv">{md.afdelingName(selected.afdeling_id)}</div></div>
             <div className="detail-item"><div className="dl">Blok</div><div className="dv">{md.blokName(selected.blok_id)}</div></div>
             {fields.map((f) => (
@@ -181,7 +181,7 @@ function CreateModal({ title, api, md, fields, onClose, onCreated }) {
     >
       <form onSubmit={handleSave} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div className="field">
-          <label>Estate</label>
+          <label>PT</label>
           <select value={form.estate_id} onChange={(e) => setForm((v) => ({ ...v, estate_id: e.target.value, afdeling_id: '', blok_id: '' }))}>
             <option value="">-</option>
             {md.estates.map((es) => <option key={es.id} value={es.id}>{es.name}</option>)}

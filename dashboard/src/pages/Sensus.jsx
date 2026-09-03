@@ -29,7 +29,7 @@ export default function Sensus() {
 
   const columns = useMemo(() => [
     { key: 'tanggal', header: 'Tanggal', render: (r) => fmtDate(r.tanggal) },
-    { key: 'blok', header: 'Estate / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
+    { key: 'blok', header: 'PT / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
     { key: 'jenis_sensus', header: 'Jenis Sensus (HPT)' },
     { key: 'hasil_hitung', header: 'Hasil', render: (r) => fmtNum(r.hasil_hitung) },
     { key: 'kategori', header: 'Kategori', render: (r) => <SeverityBadge severity={r.kategori} /> },
@@ -74,7 +74,7 @@ export default function Sensus() {
         <Modal title={`Sensus #${selected.id} — ${selected.jenis_sensus}`} onClose={() => setSelected(null)}>
           <div className="detail-grid">
             <div className="detail-item"><div className="dl">Tanggal</div><div className="dv">{fmtDate(selected.tanggal)}</div></div>
-            <div className="detail-item"><div className="dl">Estate</div><div className="dv">{md.estateName(selected.estate_id)}</div></div>
+            <div className="detail-item"><div className="dl">PT</div><div className="dv">{md.estateName(selected.estate_id)}</div></div>
             <div className="detail-item"><div className="dl">Afdeling</div><div className="dv">{md.afdelingName(selected.afdeling_id)}</div></div>
             <div className="detail-item"><div className="dl">Blok</div><div className="dv">{md.blokName(selected.blok_id)}</div></div>
             <div className="detail-item"><div className="dl">Jenis Sensus</div><div className="dv">{selected.jenis_sensus}</div></div>

@@ -5,6 +5,7 @@ import { useAuth, canManageUsers } from '../context/AuthContext';
 import { Loading, ErrorBox, Empty } from '../components/Common';
 import Modal from '../components/Modal';
 import MasterCrud from '../components/MasterCrud';
+import MasterUserMobileImport from '../components/MasterUserMobileImport';
 
 export default function PicUser() {
   const { user } = useAuth();
@@ -23,9 +24,15 @@ export default function PicUser() {
       <div className="tabs">
         <button className={'tab-btn' + (tab === 'Users' ? ' active' : '')} onClick={() => setTab('Users')}>Users</button>
         <button className={'tab-btn' + (tab === 'PIC' ? ' active' : '')} onClick={() => setTab('PIC')}>PIC Assignment</button>
+        <button className={'tab-btn' + (tab === 'Master User Mobile' ? ' active' : '')} onClick={() => setTab('Master User Mobile')}>Master User Mobile (Upload)</button>
       </div>
 
       {tab === 'Users' && <UsersTab canWrite={canManageUsers(user)} md={md} />}
+      {tab === 'Master User Mobile' && (
+        canManageUsers(user)
+          ? <MasterUserMobileImport />
+          : <p className="small-muted">Hanya Admin yang bisa mengubah Master User Mobile.</p>
+      )}
       {tab === 'PIC' && (
         <MasterCrud
           title="PIC Assignment"
@@ -33,7 +40,7 @@ export default function PicUser() {
           api={usersApi.pic}
           columns={[
             { key: 'user_name', header: 'User' },
-            { key: 'estate_id', header: 'Estate', render: (r) => r.estate_id ? md.estateName(r.estate_id) : 'Semua' },
+            { key: 'estate_id', header: 'PT', render: (r) => r.estate_id ? md.estateName(r.estate_id) : 'Semua' },
             { key: 'afdeling_id', header: 'Afdeling', render: (r) => r.afdeling_id ? md.afdelingName(r.afdeling_id) : 'Semua' },
             { key: 'blok_id', header: 'Blok', render: (r) => r.blok_id ? md.blokName(r.blok_id) : 'Semua' },
             { key: 'jenis_aktivitas', header: 'Jenis Aktivitas' },
@@ -42,7 +49,7 @@ export default function PicUser() {
           ]}
           fields={[
             { key: 'user_id', label: 'User', type: 'select', required: true, options: md.users.map((u) => ({ value: u.id, label: `${u.name} (${u.role_code})` })) },
-            { key: 'estate_id', label: 'Estate (kosongkan = semua)', type: 'select', options: md.estates.map((e) => ({ value: e.id, label: e.name })) },
+            { key: 'estate_id', label: 'PT (kosongkan = semua)', type: 'select', options: md.estates.map((e) => ({ value: e.id, label: e.name })) },
             { key: 'afdeling_id', label: 'Afdeling (kosongkan = semua)', type: 'select', options: md.afdelings.map((a) => ({ value: a.id, label: a.name })) },
             { key: 'blok_id', label: 'Blok (kosongkan = semua)', type: 'select', options: md.bloks.map((b) => ({ value: b.id, label: `${b.code} — ${b.name}` })) },
             { key: 'jenis_aktivitas', label: 'Jenis Aktivitas', type: 'select', options: [
@@ -61,7 +68,7 @@ export default function PicUser() {
 
 const ROLE_OPTIONS = [
   'ADMIN', 'SUPER_ADMIN', 'RND_FOD', 'MANAGER', 'ASKEP_ASISTEN',
-  'PETUGAS_DETEKSI', 'PETUGAS_SENSUS', 'PETUGAS_PENGENDALIAN',
+  'PETUGAS_DETEKSI', 'PETUGAS_SENSUS', 'PETUGAS_PENGENDALIAN', 'PETUGAS_LAPANGAN',
   'RISET', 'VIEWER_MANAGEMENT',
 ];
 
@@ -166,7 +173,7 @@ function UsersTab({ canWrite, md }) {
                 {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
-            <div className="field"><label>Estate</label>
+            <div className="field"><label>PT</label>
               <select value={editing.estate_id || ''} onChange={(e) => setEditing((v) => ({ ...v, estate_id: e.target.value }))}>
                 <option value="">-</option>
                 {md.estates.map((es) => <option key={es.id} value={es.id}>{es.name}</option>)}

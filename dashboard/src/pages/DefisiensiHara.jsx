@@ -218,7 +218,7 @@ function TemuanTab({ user }) {
 
   const columns = useMemo(() => [
     { key: 'tanggal', header: 'Tanggal', render: (r) => fmtDate(r.tanggal) },
-    { key: 'blok', header: 'Estate / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
+    { key: 'blok', header: 'PT / Afdeling / Blok', render: (r) => `${md.estateName(r.estate_id)} / ${md.afdelingName(r.afdeling_id)} / ${md.blokName(r.blok_id)}` },
     { key: 'unsur_hara', header: 'Unsur Hara' },
     { key: 'temuan_lapangan', header: 'Temuan Lapangan' },
     { key: 'severity', header: 'Severity', render: (r) => r.severity ? <SeverityBadge severity={r.severity} /> : '-' },
@@ -280,7 +280,7 @@ function TemuanDetailModal({ row, md, user, onClose, onChanged }) {
     <Modal title={`Temuan Defisiensi Hara #${row.id}`} onClose={onClose}>
       <div className="detail-grid">
         <div className="detail-item"><div className="dl">Tanggal</div><div className="dv">{fmtDate(row.tanggal)}</div></div>
-        <div className="detail-item"><div className="dl">Estate</div><div className="dv">{md.estateName(row.estate_id)}</div></div>
+        <div className="detail-item"><div className="dl">PT</div><div className="dv">{md.estateName(row.estate_id)}</div></div>
         <div className="detail-item"><div className="dl">Afdeling</div><div className="dv">{md.afdelingName(row.afdeling_id)}</div></div>
         <div className="detail-item"><div className="dl">Blok</div><div className="dv">{md.blokName(row.blok_id)}</div></div>
         <div className="detail-item"><div className="dl">Unsur Hara</div><div className="dv">{row.unsur_hara || '-'}</div></div>
@@ -344,7 +344,7 @@ function TemuanCreateModal({ md, onClose, onCreated }) {
     >
       <form onSubmit={handleSave} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div className="field">
-          <label>Estate</label>
+          <label>PT</label>
           <select value={form.estate_id} onChange={(e) => setForm((v) => ({ ...v, estate_id: e.target.value, afdeling_id: '', blok_id: '' }))}>
             <option value="">-</option>
             {md.estates.map((es) => <option key={es.id} value={es.id}>{es.name}</option>)}

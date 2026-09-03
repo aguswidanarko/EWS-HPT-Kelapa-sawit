@@ -97,7 +97,7 @@ export default function AlertDetail() {
           <div className="detail-grid">
             <div className="detail-item"><div className="dl">Incident</div><div className="dv">{alert.incident_code}</div></div>
             <div className="detail-item"><div className="dl">HPT</div><div className="dv">{alert.hpt_name}</div></div>
-            <div className="detail-item"><div className="dl">Estate</div><div className="dv">{alert.estate_name}</div></div>
+            <div className="detail-item"><div className="dl">PT</div><div className="dv">{alert.estate_name}</div></div>
             <div className="detail-item"><div className="dl">Afdeling</div><div className="dv">{alert.afdeling_name}</div></div>
             <div className="detail-item"><div className="dl">Blok</div><div className="dv">{alert.blok_code}</div></div>
             <div className="detail-item"><div className="dl">Hasil</div><div className="dv">{alert.hasil}</div></div>
