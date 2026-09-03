@@ -36,7 +36,7 @@ router.get(
 
 router.post(
   '/',
-  requireRole('ADMIN', 'PETUGAS_PENGENDALIAN'),
+  requireRole('ADMIN', 'PETUGAS_PENGENDALIAN', 'PETUGAS_LAPANGAN'),
   asyncHandler(async (req, res) => {
     const result = ingestMortality(
       { ...req.body, source: req.body.source || 'WEB' },

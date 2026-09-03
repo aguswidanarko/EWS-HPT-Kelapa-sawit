@@ -17,7 +17,7 @@ const { checkContainmentByBlokId } = require('../services/gisContainment');
 const router = express.Router();
 router.use(requireAuth);
 
-const CREATE_ROLES = ['ADMIN', 'RND_FOD', 'PETUGAS_SENSUS', 'ASKEP_ASISTEN'];
+const CREATE_ROLES = ['ADMIN', 'RND_FOD', 'PETUGAS_SENSUS', 'ASKEP_ASISTEN', 'PETUGAS_LAPANGAN'];
 
 function resolveLocation(input) {
   const blok = db.prepare('SELECT * FROM blok WHERE id=?').get(input.blok_id);

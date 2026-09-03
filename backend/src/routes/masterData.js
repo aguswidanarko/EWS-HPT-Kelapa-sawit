@@ -101,10 +101,18 @@ router.use(
   crud('region', { allowedFields: ['code', 'name'] })
 );
 
+// ---------------------------------------------------------------- Bisnis Unit (V3.2: Master Blok
+// Terpusat -- groups several PT/Estate under one Region, see schema.sql's "V3.2: MASTER BLOK
+// TERPUSAT" block)
+router.use(
+  '/bisnis-units',
+  crud('bisnis_unit', { allowedFields: ['region_id', 'code', 'name'] })
+);
+
 // ---------------------------------------------------------------- Estate
 router.use(
   '/estates',
-  crud('estate', { allowedFields: ['code', 'name', 'map_file_ref', 'region_id'] })
+  crud('estate', { allowedFields: ['code', 'name', 'map_file_ref', 'region_id', 'bisnis_unit_id'] })
 );
 
 // ---------------------------------------------------------------- Rayon (V3 Addendum 2:
@@ -125,7 +133,7 @@ router.use(
   '/bloks',
   crud('blok', {
     allowedFields: [
-      'afdeling_id', 'code', 'name', 'luas', 'tahun_tanam', 'status_tanaman',
+      'afdeling_id', 'code', 'name', 'luas', 'tahun_tanam', 'jumlah_pokok', 'status_tanaman',
       'referensi_polygon', 'jumlah_baris', 'parameter_sampling_json',
     ],
   })

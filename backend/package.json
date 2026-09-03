@@ -1,6 +1,6 @@
 {
   "name": "ews-hpt-backend",
-  "version": "1.0.0",
+  "version": "3.2.0",
   "description": "EWS HPT backend API - REST API + SQLite, single source of truth for dashboard & mobile apps",
   "main": "src/index.js",
   "type": "commonjs",

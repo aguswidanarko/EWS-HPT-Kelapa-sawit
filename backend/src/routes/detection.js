@@ -38,7 +38,7 @@ router.get(
 
 router.post(
   '/',
-  requireRole('ADMIN', 'PETUGAS_DETEKSI', 'RND_FOD'),
+  requireRole('ADMIN', 'PETUGAS_DETEKSI', 'RND_FOD', 'PETUGAS_LAPANGAN'),
   asyncHandler(async (req, res) => {
     const result = ingestDetection(
       { ...req.body, source: req.body.source || 'WEB' },

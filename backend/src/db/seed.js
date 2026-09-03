@@ -50,6 +50,10 @@ function main() {
     ['PETUGAS_DETEKSI', 'Petugas Deteksi'],
     ['PETUGAS_SENSUS', 'Petugas Sensus'],
     ['PETUGAS_PENGENDALIAN', 'Petugas Pengendalian'],
+    // V3.2: generic field officer, one shared login per Afdeling -- see services/permissions.js
+    // and db.js's migrateV32Role() (which is what actually adds this role to an already-seeded/
+    // production database, since this seed.js array only ever applies to a fresh DB).
+    ['PETUGAS_LAPANGAN', 'Petugas Lapangan (Afdeling)'],
     ['RISET', 'Riset (Leaf Analysis / Defisiensi Hara)'],
     ['VIEWER_MANAGEMENT', 'Viewer / Management (read-only)'],
   ];

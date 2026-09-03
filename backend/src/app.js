@@ -63,6 +63,12 @@ app.use('/api/ai-assistant', require('./routes/aiAssistant'));
 // ===================== V3 Addendum 2: Master Wilayah import (Region/PT/Rayon/Afdeling) =====================
 app.use('/api/master-wilayah-import', require('./routes/masterWilayahImport'));
 
+// ===================== V3.2: Master Blok Terpusat (Region/Bisnis Unit/PT/Afdeling/Blok) =====================
+app.use('/api/master-blok-import', require('./routes/masterBlokImport'));
+
+// ===================== V3.2: Master User Mobile Apps per Afdeling (PETUGAS_LAPANGAN bulk-provision) =====================
+app.use('/api/master-user-mobile-import', require('./routes/masterUserMobileImport'));
+
 // ===================== V3.1: Universal Assessment Form + Mapping Engine =====================
 // See routes/assessment.js and services/assessmentEngine.js header comments.
 app.use('/api/assessment', require('./routes/assessment'));

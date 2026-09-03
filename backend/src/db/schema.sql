@@ -957,6 +957,32 @@ CREATE TABLE IF NOT EXISTS rayon (
 CREATE INDEX IF NOT EXISTS idx_rayon_estate ON rayon(estate_id);
 
 -- =====================================================================================
+-- ==================== V3.2: MASTER BLOK TERPUSAT (Single Source of Truth) ============
+-- =====================================================================================
+-- Source: user-supplied "Master_Data_PT_Afd_Blok_EWS_Ok.xlsx" (sheets MASTER_PT / MASTER_AFD /
+-- MASTER_BLOK). Adds ONE new hierarchy level, Bisnis Unit, that sits BETWEEN region and estate
+-- (PT): a Bisnis Unit groups several PT that share the same name prefix in MASTER_PT's "Nama PT"
+-- column (e.g. "KTBM - Kebun Sei Besar", "KTBM - Kebun Sei Jernih", ... all belong to Bisnis Unit
+-- "KTBM"). This is a DIFFERENT concept from the V3 Addendum 2 "BusinessUnit" column in
+-- masterWilayahImport.js, which was only ever a friendly display name stored on estate.name for a
+-- single PT, not a level grouping multiple PTs -- that older usage is left untouched.
+-- estate.bisnis_unit_id (nullable FK, added via migrateV32Columns in db.js since CREATE TABLE IF
+-- NOT EXISTS cannot ALTER an existing table) links PT -> Bisnis Unit; estate.region_id (V3
+-- Addendum 2) keeps working unchanged and is kept in sync with bisnis_unit.region_id by the
+-- Master Blok upload endpoint so both direct (estate->region) and hierarchical
+-- (estate->bisnis_unit->region) lookups agree.
+CREATE TABLE IF NOT EXISTS bisnis_unit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  region_id INTEGER NOT NULL REFERENCES region(id),
+  code TEXT NOT NULL, -- e.g. "KTBM", "CLP" -- the Nama PT prefix, unique per region
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(region_id, code)
+);
+CREATE INDEX IF NOT EXISTS idx_bisnis_unit_region ON bisnis_unit(region_id);
+
+-- =====================================================================================
 -- ============ V3 ADDENDUM 2: KOMENTAR PADA SEMUA MODUL DETAIL EWS ====================
 -- =====================================================================================
 -- Source: "Tambahan Fitur Komentar pada semua modul Detail EWS.pdf". Generic entity_type +

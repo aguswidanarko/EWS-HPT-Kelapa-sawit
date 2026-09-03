@@ -20,7 +20,7 @@ const { ingestAgroObservation } = require('../services/ingestion');
 const router = express.Router();
 router.use(requireAuth);
 
-const CREATE_ROLES = ['ADMIN', 'RND_FOD', 'PETUGAS_SENSUS', 'ASKEP_ASISTEN'];
+const CREATE_ROLES = ['ADMIN', 'RND_FOD', 'PETUGAS_SENSUS', 'ASKEP_ASISTEN', 'PETUGAS_LAPANGAN'];
 
 // -------------------------------------------------------------------------------------- list
 router.get(

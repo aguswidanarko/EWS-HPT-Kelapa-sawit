@@ -96,11 +96,36 @@ function migrateV31Columns() {
            WHERE context IS NULL AND satuan='cm' AND hpt_id IN (SELECT id FROM hpt WHERE code='WATER_MANAGEMENT')`);
 }
 
+// V3.2: Master Blok Terpusat (Region / Bisnis Unit / PT / Afdeling / Blok single source of
+// truth -- see schema.sql's "V3.2: MASTER BLOK TERPUSAT" block for the bisnis_unit table and the
+// full rationale). estate.bisnis_unit_id links PT -> Bisnis Unit (bisnis_unit table itself is
+// created by loadSchema() above). blok.jumlah_pokok (Total Stand / jumlah pokok per blok) is a
+// new field carried by the uploaded MASTER_BLOK sheet that the pre-V3.2 blok table never had.
+function migrateV32Columns() {
+  tryAddColumn('estate', `bisnis_unit_id INTEGER REFERENCES bisnis_unit(id)`);
+  tryAddColumn('blok', `jumlah_pokok INTEGER`);
+}
+
+// V3.2: new PETUGAS_LAPANGAN role (see services/permissions.js) needed for the "Master User
+// Mobile Apps per Afdeling" bulk-account feature. Unlike seed.js's `roles` array (which only ever
+// runs against a FRESH database -- seed.js's reset() wipes every table first, so it must never be
+// re-run against a live/production database), this INSERT-if-missing runs on every boot, exactly
+// like the other migrate* functions here, so an existing production database picks up the new
+// role without anyone needing to touch its data directly.
+function migrateV32Role() {
+  const exists = db.prepare(`SELECT id FROM role WHERE code = 'PETUGAS_LAPANGAN'`).get();
+  if (!exists) {
+    db.prepare(`INSERT INTO role (code, name) VALUES ('PETUGAS_LAPANGAN', 'Petugas Lapangan (Afdeling)')`).run();
+  }
+}
+
 loadSchema();
 migrateV2Columns();
 migrateV3AddendumColumns();
 migrateV4KbIndexColumns();
 migrateV31Columns();
+migrateV32Columns();
+migrateV32Role();
 migrateAlertStatusV2();
 
 // V3: BRD_V3 EWS Dictionary (31 EWS_ID rows) references base hpt codes (TIKUS/UPDKS/...) that

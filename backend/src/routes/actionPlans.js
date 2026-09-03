@@ -113,7 +113,7 @@ router.post(
 
 router.put(
   '/:id',
-  requireRole('ADMIN', 'ASKEP_ASISTEN', 'MANAGER', 'RND_FOD', 'PETUGAS_PENGENDALIAN'),
+  requireRole('ADMIN', 'ASKEP_ASISTEN', 'MANAGER', 'RND_FOD', 'PETUGAS_PENGENDALIAN', 'PETUGAS_LAPANGAN'),
   asyncHandler(async (req, res) => {
     const before = db.prepare('SELECT * FROM action_plan WHERE id=?').get(req.params.id);
     if (!before) return res.status(404).json({ error: 'Not found' });

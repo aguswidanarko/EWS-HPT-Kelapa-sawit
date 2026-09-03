@@ -42,7 +42,7 @@ router.get(
 
 router.post(
   '/',
-  requireRole('ADMIN', 'PETUGAS_DETEKSI', 'PETUGAS_SENSUS', 'ASKEP_ASISTEN', 'RND_FOD'),
+  requireRole('ADMIN', 'PETUGAS_DETEKSI', 'PETUGAS_SENSUS', 'ASKEP_ASISTEN', 'RND_FOD', 'PETUGAS_LAPANGAN'),
   asyncHandler(async (req, res) => {
     const { blok_id, tanggal, unsur_hara, temuan_lapangan, severity, leaf_analysis_id } = req.body;
     if (!blok_id || !tanggal) return res.status(400).json({ error: 'blok_id, tanggal wajib diisi' });

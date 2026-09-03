@@ -51,7 +51,7 @@ router.get(
 
 router.post(
   '/',
-  requireRole('ADMIN', 'PETUGAS_SENSUS', 'RND_FOD'),
+  requireRole('ADMIN', 'PETUGAS_SENSUS', 'RND_FOD', 'PETUGAS_LAPANGAN'),
   asyncHandler(async (req, res) => {
     const result = ingestSensus(
       { ...req.body, source: req.body.source || 'WEB' },

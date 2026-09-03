@@ -37,7 +37,7 @@ router.get(
 
 router.post(
   '/',
-  requireRole('ADMIN', 'PETUGAS_PENGENDALIAN', 'ASKEP_ASISTEN'),
+  requireRole('ADMIN', 'PETUGAS_PENGENDALIAN', 'ASKEP_ASISTEN', 'PETUGAS_LAPANGAN'),
   asyncHandler(async (req, res) => {
     const result = ingestTreatment(
       { ...req.body, source: req.body.source || 'WEB' },
@@ -49,7 +49,7 @@ router.post(
 
 router.put(
   '/:id',
-  requireRole('ADMIN', 'PETUGAS_PENGENDALIAN', 'ASKEP_ASISTEN'),
+  requireRole('ADMIN', 'PETUGAS_PENGENDALIAN', 'ASKEP_ASISTEN', 'PETUGAS_LAPANGAN'),
   asyncHandler(async (req, res) => {
     const before = db.prepare('SELECT * FROM treatment WHERE id=?').get(req.params.id);
     if (!before) return res.status(404).json({ error: 'Not found' });

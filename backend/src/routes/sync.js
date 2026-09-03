@@ -24,13 +24,18 @@ router.use(requireAuth);
 router.get(
   '/master',
   asyncHandler(async (req, res) => {
+    // V3.2: regions/bisnis_units sent alongside estates so the mobile Region/Bisnis Unit ->
+    // PT cascade (LocationCascade.tsx) works fully offline, same as estates/afdelings/bloks
+    // always have -- see masterRepo.ts saveMasterData() on the mobile side.
+    const regions = db.prepare('SELECT * FROM region').all();
+    const bisnisUnits = db.prepare('SELECT * FROM bisnis_unit').all();
     const estates = db.prepare('SELECT * FROM estate').all();
     const afdelings = db.prepare('SELECT * FROM afdeling').all();
     const bloks = db.prepare('SELECT * FROM blok').all();
     const hpt = db.prepare('SELECT * FROM hpt WHERE status_aktif=1').all();
     const species = db.prepare('SELECT * FROM species').all();
     res.json({
-      data: { estates, afdelings, bloks, hpt, species },
+      data: { regions, bisnis_units: bisnisUnits, estates, afdelings, bloks, hpt, species },
       synced_at: new Date().toISOString(),
     });
   })
