@@ -1,12 +1,30 @@
 import { useEffect, useState } from 'react';
 import * as masterRepo from '../db/repo/masterRepo';
-import type { Afdeling, Blok, Estate, Hpt, Species, ThresholdRow } from '../types';
+import type { Afdeling, BisnisUnit, Blok, Estate, Hpt, Region, Species, ThresholdRow } from '../types';
 
-export function useEstates(): Estate[] {
+// V3.2: Region -> Bisnis Unit -> PT (Estate). Used by LocationCascade.tsx to narrow the PT
+// picker; regions/bisnis_units are always loaded fully (only 3 regions / ~38 bisnis unit today).
+export function useRegions(): Region[] {
+  const [rows, setRows] = useState<Region[]>([]);
+  useEffect(() => {
+    masterRepo.getRegions().then(setRows);
+  }, []);
+  return rows;
+}
+
+export function useBisnisUnits(regionId: number | null): BisnisUnit[] {
+  const [rows, setRows] = useState<BisnisUnit[]>([]);
+  useEffect(() => {
+    masterRepo.getBisnisUnits(regionId ?? undefined).then(setRows);
+  }, [regionId]);
+  return rows;
+}
+
+export function useEstates(bisnisUnitId?: number | null): Estate[] {
   const [rows, setRows] = useState<Estate[]>([]);
   useEffect(() => {
-    masterRepo.getEstates().then(setRows);
-  }, []);
+    masterRepo.getEstates(bisnisUnitId ?? undefined).then(setRows);
+  }, [bisnisUnitId]);
   return rows;
 }
 

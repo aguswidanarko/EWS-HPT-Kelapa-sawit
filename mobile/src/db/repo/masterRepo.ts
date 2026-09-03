@@ -1,17 +1,34 @@
 import { getDb, withTransaction } from '../database';
-import type { Afdeling, Blok, Estate, Hpt, Species, ThresholdRow, ScheduleItem, CachedIncident, SamplingRuleRow } from '../../types';
+import type { Afdeling, BisnisUnit, Blok, Estate, Hpt, Region, Species, ThresholdRow, ScheduleItem, CachedIncident, SamplingRuleRow } from '../../types';
 import type { MasterDownload } from '../../api/sync';
 
-// ---------------------------------------------------------------- master (estate/afdeling/blok/hpt/species)
+// ---------------------------------------------------------------- master (region/bisnis_unit/estate/afdeling/blok/hpt/species)
 export async function saveMasterData(data: MasterDownload): Promise<void> {
   await withTransaction(async (db) => {
+    // V3.2: regions/bisnis_units are optional in older backends (pre-V3.2) -- default to []
+    // rather than crashing offline-first devices that haven't upgraded their server yet.
+    await db.runAsync('DELETE FROM regions');
+    for (const r of data.regions || []) {
+      await db.runAsync('INSERT INTO regions (id, code, name) VALUES (?, ?, ?)', [r.id, r.code, r.name]);
+    }
+    await db.runAsync('DELETE FROM bisnis_units');
+    for (const bu of data.bisnis_units || []) {
+      await db.runAsync('INSERT INTO bisnis_units (id, region_id, code, name) VALUES (?, ?, ?, ?)', [
+        bu.id,
+        bu.region_id,
+        bu.code,
+        bu.name,
+      ]);
+    }
     await db.runAsync('DELETE FROM estates');
     for (const e of data.estates) {
-      await db.runAsync('INSERT INTO estates (id, code, name, map_file_ref) VALUES (?, ?, ?, ?)', [
+      await db.runAsync('INSERT INTO estates (id, code, name, map_file_ref, region_id, bisnis_unit_id) VALUES (?, ?, ?, ?, ?, ?)', [
         e.id,
         e.code,
         e.name,
         e.map_file_ref,
+        e.region_id ?? null,
+        e.bisnis_unit_id ?? null,
       ]);
     }
     await db.runAsync('DELETE FROM afdelings');
@@ -27,8 +44,8 @@ export async function saveMasterData(data: MasterDownload): Promise<void> {
     await db.runAsync('DELETE FROM bloks');
     for (const b of data.bloks) {
       await db.runAsync(
-        `INSERT INTO bloks (id, afdeling_id, code, name, luas, tahun_tanam, status_tanaman, referensi_polygon, jumlah_baris, parameter_sampling_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO bloks (id, afdeling_id, code, name, luas, tahun_tanam, status_tanaman, referensi_polygon, jumlah_baris, parameter_sampling_json, jumlah_pokok)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           b.id,
           b.afdeling_id,
@@ -40,6 +57,7 @@ export async function saveMasterData(data: MasterDownload): Promise<void> {
           b.referensi_polygon,
           b.jumlah_baris,
           b.parameter_sampling_json,
+          b.jumlah_pokok ?? null,
         ]
       );
     }
@@ -78,8 +96,20 @@ export async function saveMasterData(data: MasterDownload): Promise<void> {
   });
 }
 
-export async function getEstates(): Promise<Estate[]> {
+export async function getRegions(): Promise<Region[]> {
   const db = await getDb();
+  return db.getAllAsync<Region>('SELECT * FROM regions ORDER BY name');
+}
+
+export async function getBisnisUnits(regionId?: number): Promise<BisnisUnit[]> {
+  const db = await getDb();
+  if (regionId) return db.getAllAsync<BisnisUnit>('SELECT * FROM bisnis_units WHERE region_id = ? ORDER BY name', [regionId]);
+  return db.getAllAsync<BisnisUnit>('SELECT * FROM bisnis_units ORDER BY name');
+}
+
+export async function getEstates(bisnisUnitId?: number): Promise<Estate[]> {
+  const db = await getDb();
+  if (bisnisUnitId) return db.getAllAsync<Estate>('SELECT * FROM estates WHERE bisnis_unit_id = ? ORDER BY name', [bisnisUnitId]);
   return db.getAllAsync<Estate>('SELECT * FROM estates ORDER BY name');
 }
 

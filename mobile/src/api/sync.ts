@@ -6,17 +6,21 @@ import { http } from './client';
 import { getDeviceId } from '../utils/device';
 import type {
   Afdeling,
+  BisnisUnit,
   Blok,
   CachedIncident,
   Estate,
   Hpt,
   KnowledgeBaseEntry,
+  Region,
   ScheduleItem,
   Species,
   ThresholdRow,
 } from '../types';
 
 export interface MasterDownload {
+  regions: Region[];
+  bisnis_units: BisnisUnit[];
   estates: Estate[];
   afdelings: Afdeling[];
   bloks: Blok[];

@@ -29,11 +29,27 @@ export interface AuthTokens {
 }
 
 // ---------------------------------------------------------------- Master data (cached, read-only)
+// V3.2: Region -> Bisnis Unit -> PT (Estate). See LocationCascade.tsx / masterRepo.ts.
+export interface Region {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface BisnisUnit {
+  id: number;
+  region_id: number;
+  code: string;
+  name: string;
+}
+
 export interface Estate {
   id: number;
   code: string;
   name: string;
   map_file_ref: string | null;
+  region_id: number | null;
+  bisnis_unit_id: number | null;
 }
 
 export interface Afdeling {
@@ -61,6 +77,7 @@ export interface Blok {
   referensi_polygon: string | null; // GeoJSON string
   jumlah_baris: number | null;
   parameter_sampling_json: string | null; // JSON string -> SamplingParams
+  jumlah_pokok: number | null; // V3.2: Total Stand, from Master Blok upload
 }
 
 export type MetodeSensus = 'BARIS_SAMPEL' | 'GRID' | 'SELURUH_POKOK';

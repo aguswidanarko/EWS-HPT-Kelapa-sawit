@@ -26,6 +26,7 @@ export default function LoginScreen() {
             <Text style={styles.logo}>🌴</Text>
             <Text style={styles.title}>{APP_NAME}</Text>
             <Text style={styles.subtitle}>Early Warning System Hama &amp; Penyakit Tanaman - Kelapa Sawit</Text>
+            <Text style={styles.version}>v3.2</Text>
           </View>
 
           {!isOnline && (
@@ -80,6 +81,7 @@ const styles = StyleSheet.create({
   logo: { fontSize: 48, marginBottom: 8 },
   title: { fontSize: 20, fontWeight: '800', color: colors.text },
   subtitle: { fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 4 },
+  version: { fontSize: 10, color: colors.textMuted, textAlign: 'center', marginTop: 8 },
   error: { color: colors.danger, marginBottom: spacing.sm },
   offlineNotice: { backgroundColor: '#FBE7E4', borderRadius: 8, padding: 10, marginBottom: spacing.md },
   offlineNoticeText: { color: colors.danger, fontSize: 12 },

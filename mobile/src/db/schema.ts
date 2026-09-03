@@ -22,6 +22,20 @@ CREATE TABLE IF NOT EXISTS session_user (
 );
 
 -- ---------------------------------------------------------------- master data (cached, read-only)
+-- V3.2: Region -> Bisnis Unit -> PT (estates table, unchanged name/columns below -- only the
+-- LocationCascade UI label changed from "Estate" to "PT") -> Afdeling -> Blok. estates.region_id/
+-- estates.bisnis_unit_id are added via migrateV32Columns() in database.ts (ALTER TABLE, not here)
+-- so upgrading an existing install is safe -- see that function's header comment.
+CREATE TABLE IF NOT EXISTS regions (
+  id INTEGER PRIMARY KEY,
+  code TEXT, name TEXT
+);
+
+CREATE TABLE IF NOT EXISTS bisnis_units (
+  id INTEGER PRIMARY KEY,
+  region_id INTEGER, code TEXT, name TEXT
+);
+
 CREATE TABLE IF NOT EXISTS estates (
   id INTEGER PRIMARY KEY,
   code TEXT, name TEXT, map_file_ref TEXT

@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import SelectField from './SelectField';
-import { useAfdelings, useBloks, useEstates } from '../hooks/useMasterData';
+import { useAfdelings, useBisnisUnits, useBloks, useEstates, useRegions } from '../hooks/useMasterData';
 
 export interface LocationValue {
   estate_id: number | null;
@@ -13,11 +13,21 @@ interface Props {
   onChange: (v: LocationValue) => void;
 }
 
-/** Cascading Estate -> Afdeling -> Blok picker backed by the locally cached master data (works
- * fully offline once "Download data offline" has run at least once). Changing a parent level
- * clears the levels below it. */
+/** Cascading PT -> Afdeling -> Blok picker backed by the locally cached master data (works fully
+ * offline once "Download data offline" has run at least once).
+ *
+ * V3.2: Region and Bisnis Unit are shown ABOVE the PT picker purely as local narrowing filters --
+ * with ~50 PT across 3 Region since Master Blok Terpusat, a flat PT dropdown is unwieldy. They are
+ * NOT part of LocationValue/onChange (a submitted record still only ever carries estate_id/
+ * afdeling_id/blok_id, exactly as before) so this stays a self-contained change: every one of the
+ * ~15 screens that already use LocationCascade needs zero changes. Changing a parent level clears
+ * every level below it, same as before. */
 export default function LocationCascade({ value, onChange }: Props) {
-  const estates = useEstates();
+  const regions = useRegions();
+  const [regionId, setRegionId] = useState<number | null>(null);
+  const bisnisUnits = useBisnisUnits(regionId);
+  const [bisnisUnitId, setBisnisUnitId] = useState<number | null>(null);
+  const estates = useEstates(bisnisUnitId);
   const afdelings = useAfdelings(value.estate_id);
   const bloks = useBloks(value.afdeling_id);
 
@@ -39,7 +49,27 @@ export default function LocationCascade({ value, onChange }: Props) {
   return (
     <>
       <SelectField
-        label="Estate"
+        label="Region"
+        value={regionId}
+        options={regions.map((r) => ({ label: r.name, value: r.id }))}
+        onChange={(v) => {
+          setRegionId(v);
+          setBisnisUnitId(null);
+          onChange({ estate_id: null, afdeling_id: null, blok_id: null });
+        }}
+      />
+      <SelectField
+        label="Bisnis Unit"
+        value={bisnisUnitId}
+        options={bisnisUnits.map((b) => ({ label: b.name, value: b.id }))}
+        onChange={(v) => {
+          setBisnisUnitId(v);
+          onChange({ estate_id: null, afdeling_id: null, blok_id: null });
+        }}
+        disabled={!regionId}
+      />
+      <SelectField
+        label="PT"
         required
         value={value.estate_id}
         options={estates.map((e) => ({ label: e.name, value: e.id }))}

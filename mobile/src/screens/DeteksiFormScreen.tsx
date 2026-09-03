@@ -181,7 +181,7 @@ export default function DeteksiFormScreen({ navigation }: Props) {
 
   const handleSubmit = () => {
     if (!location.blok_id || !hptId || !tanggal) {
-      Alert.alert('Lengkapi data', 'Estate/Afdeling/Blok dan Hama/Penyakit wajib dipilih.');
+      Alert.alert('Lengkapi data', 'PT/Afdeling/Blok dan Hama/Penyakit wajib dipilih.');
       return;
     }
     if (terlihatIndikasi && !gejala.trim()) {
