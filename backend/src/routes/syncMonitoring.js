@@ -12,11 +12,17 @@ router.get(
   '/',
   requireRole('ADMIN', 'RND_FOD', 'MANAGER', 'ASKEP_ASISTEN'),
   asyncHandler(async (req, res) => {
+    // BRD EWS HPT V3.2.1 section 24 (Dashboard Sync Monitoring): last_sync_finished/last_status
+    // used to come back NULL whenever device_id was NULL (a device that never sent X-Device-Id,
+    // or any record ingested outside the mobile sync path) - `s2.device_id=sl.device_id` in SQL
+    // is NULL when both sides are NULL (NULL is never "=" to anything, including itself), so the
+    // correlated subquery matched zero rows in that case. `IS` is SQLite's NULL-safe equality and
+    // fixes this without changing behavior for the (normal, device_id present) case.
     const rows = db
       .prepare(
         `SELECT sl.user_id, u.name AS user_name, sl.device_id, MAX(sl.started_at) AS last_sync_started,
-                (SELECT finished_at FROM sync_log s2 WHERE s2.user_id=sl.user_id AND s2.device_id=sl.device_id ORDER BY started_at DESC LIMIT 1) AS last_sync_finished,
-                (SELECT status FROM sync_log s3 WHERE s3.user_id=sl.user_id AND s3.device_id=sl.device_id ORDER BY started_at DESC LIMIT 1) AS last_status,
+                (SELECT finished_at FROM sync_log s2 WHERE s2.user_id=sl.user_id AND s2.device_id IS sl.device_id ORDER BY started_at DESC LIMIT 1) AS last_sync_finished,
+                (SELECT status FROM sync_log s3 WHERE s3.user_id=sl.user_id AND s3.device_id IS sl.device_id ORDER BY started_at DESC LIMIT 1) AS last_status,
                 SUM(sl.jumlah_data) AS total_jumlah_data, SUM(sl.success_count) AS total_success, SUM(sl.failed_count) AS total_failed
          FROM sync_log sl JOIN user u ON u.id = sl.user_id
          GROUP BY sl.user_id, sl.device_id

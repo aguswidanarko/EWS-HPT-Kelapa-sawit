@@ -1,0 +1,54 @@
+# BRD EWS HPT V3.2.1 section 7 (API Gateway / Nginx) - reference server block.
+#
+# This is a STARTING POINT, not something this repo runs directly - copy the relevant parts into
+# your actual server's Nginx sites config (e.g. /etc/nginx/sites-available/ews-hpt) and adjust
+# server_name / TLS / dashboard build path for your environment (see backend/README.md section 12
+# for the full rollout order).
+#
+# What this achieves (BRD section 3 architecture):
+#   Mobile  --http://10.110.1.9/api-->   Nginx :80  --/api--> Node backend :4000 (127.0.0.1 only)
+#   Browser --http://10.110.1.9------->   Nginx :80  --/---->  dashboard static build
+# Mobile and Dashboard hit the exact same origin/gateway; the backend's :4000 is never exposed
+# directly to the LAN (BRD section 25/26 - keep 4000 INTERNAL ONLY in the firewall).
+
+server {
+    listen 80;
+    server_name 10.110.1.9;  # or your LAN hostname / eventual api.domain.com
+
+    # ---- Dashboard (React/Vite build output - `cd dashboard && npm run build`, serve dist/) ----
+    root /var/www/ews-hpt-dashboard/dist;  # adjust to your actual deploy path
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;  # SPA fallback for client-side routing
+    }
+
+    # ---- API gateway (BRD section 7) ----
+    location /api/ {
+        proxy_pass http://127.0.0.1:4000/api/;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Mobile batch sync uploads (photos, batch detection/sensus arrays) can be slow on poor
+        # field connectivity - keep these generous rather than surfacing a proxy timeout as a
+        # false "server unreachable" (BRD section 10.2).
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 60s;
+        client_max_body_size 20m;
+    }
+
+    # ---- Health check passthrough (BRD section 6: GET /health, no auth, no /api prefix) ----
+    location = /health {
+        proxy_pass http://127.0.0.1:4000/health;
+        proxy_set_header Host $host;
+    }
+}
+
+# For an eventual internet-facing deployment (BRD section 29/35 "target jangka panjang":
+# https://api.domain.com/api), add a second server block redirecting :80 -> :443 and terminate TLS
+# here (certbot/Let's Encrypt or your org's certificate), keeping the same /api and /health
+# location blocks above.

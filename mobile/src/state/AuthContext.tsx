@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as authApi from '../api/auth';
-import { onAuthFailure } from '../api/client';
+import { onAuthFailure, friendlyErrorMessage, getErrorCategory } from '../api/client';
 import { clearTokens, setTokens } from '../api/tokenStore';
 import { clearUserProfile, loadUserProfile, saveUserProfile } from '../db/repo/metaRepo';
 import type { UserProfile } from '../types';
@@ -49,8 +49,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(res.user);
       return true;
     } catch (e) {
-      const anyErr = e as { response?: { data?: { error?: string } }; message?: string };
-      setLoginError(anyErr.response?.data?.error || anyErr.message || 'Login gagal. Periksa koneksi & kredensial.');
+      // BRD EWS HPT V3.2.1 section 20 (Error Message Mobile): tell "server unreachable" apart
+      // from "wrong credentials" - a raw axios/network message must never be the only thing
+      // shown here.
+      if (getErrorCategory(e) === 'NETWORK_ERROR') {
+        setLoginError('Server EWS HPT tidak dapat dihubungi.');
+      } else if (getErrorCategory(e) === 'AUTH_ERROR') {
+        setLoginError('Login gagal.\n\nUsername atau password tidak valid.');
+      } else {
+        setLoginError(friendlyErrorMessage(e));
+      }
       return false;
     } finally {
       setLoggingIn(false);

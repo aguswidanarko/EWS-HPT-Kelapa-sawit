@@ -1,6 +1,15 @@
+import axios from 'axios';
 import client, { API_URL } from './client';
 
 export const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
+
+// ---- Backend connectivity (BRD EWS HPT V3.2.1 section 23: Dashboard Connectivity Indicator) ----
+// Deliberately NOT using the shared `client` above: /health lives outside /api and needs neither
+// the Authorization header nor the 401-refresh-and-retry interceptor - just a fast yes/no with a
+// short timeout so the topbar indicator doesn't hang.
+export const healthApi = {
+  check: () => axios.get(`${API_ORIGIN}/health`, { timeout: 5000 }).then((r) => r.data),
+};
 
 export function fileUrl(filePath) {
   if (!filePath) return '';

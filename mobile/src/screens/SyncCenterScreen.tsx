@@ -6,6 +6,8 @@ import SectionCard from '../components/SectionCard';
 import Button from '../components/Button';
 import { useSync } from '../state/SyncContext';
 import { useNet } from '../state/NetContext';
+import { http } from '../api/client';
+import { checkApiDiagnostic, type ApiDiagnosticResult } from '../api/health';
 import { getRiwayat, type RiwayatItem } from '../db/repo/riwayatRepo';
 import { colors, spacing } from '../theme';
 import { formatDateTime } from '../utils/format';
@@ -32,14 +34,32 @@ const SYNC_META: Record<string, { emoji: string; label: string; color: string }>
   FAILED: { emoji: '❌', label: 'Gagal / error', color: colors.danger },
 };
 
+/** BRD section 10.1-10.3 label/emoji for the "Server" row - same mapping ConnectionPill.tsx uses,
+ * duplicated here (not imported) since ConnectionPill derives from pillStatus (which also folds
+ * in isSyncing) while this row is specifically about serverStatus alone, per the BRD section 13
+ * Sync Center mock-up ("Server 🟢 Terhubung" / "Server 🔴 Tidak terhubung"). */
+const SERVER_STATUS_META: Record<string, { emoji: string; label: string; color: string }> = {
+  UNKNOWN: { emoji: '⚪', label: 'Belum diperiksa', color: colors.textMuted },
+  CHECKING: { emoji: '⚪', label: 'Memeriksa...', color: colors.textMuted },
+  SERVER_CONNECTED: { emoji: '🟢', label: 'Terhubung', color: colors.online },
+  SERVER_UNREACHABLE: { emoji: '🔴', label: 'Tidak terhubung', color: colors.offline },
+};
+
 /** SPEC.md "Sync Center": ringkasan ("17 data belum terkirim - Deteksi 10, Sensus 5, Treatment
  * 2"), tombol "Sinkronkan Sekarang", per-item status (belum terkirim/sedang dikirim/berhasil/
  * gagal/error). Safe when offline (button disabled, pill shows 🔴) and safe to interrupt - every
- * write goes through a SQLite transaction (see sync/engine.ts + db/database.ts withTransaction). */
+ * write goes through a SQLite transaction (see sync/engine.ts + db/database.ts withTransaction).
+ *
+ * BRD EWS HPT V3.2.1 sections 11-13 add: an explicit Server row (section 13), a "Tes Koneksi
+ * Server" button (section 11, GET /health) and a "Tes API" button (section 12, GET
+ * /api/sync/status) that tells "server is up" apart from "the API/DB/auth actually work". */
 export default function SyncCenterScreen() {
-  const { isOnline } = useNet();
+  const { isOnline, serverStatus, lastCheckedAt, lastLatencyMs, testServerConnection } = useNet();
   const { pending, pendingTotal, isSyncing, lastDownload, lastUpload, lastSyncAt, syncError, runDownload, runUpload, runFullSync } = useSync();
   const [pendingItems, setPendingItems] = useState<RiwayatItem[]>([]);
+  const [testingServer, setTestingServer] = useState(false);
+  const [testingApi, setTestingApi] = useState(false);
+  const [apiDiagnostic, setApiDiagnostic] = useState<ApiDiagnosticResult | null>(null);
 
   const loadItems = useCallback(async () => {
     const all = await getRiwayat(500);
@@ -61,6 +81,27 @@ export default function SyncCenterScreen() {
     await runDownload();
     await loadItems();
   };
+
+  const handleTestServer = async () => {
+    setTestingServer(true);
+    try {
+      await testServerConnection();
+    } finally {
+      setTestingServer(false);
+    }
+  };
+
+  const handleTestApi = async () => {
+    setTestingApi(true);
+    try {
+      const result = await checkApiDiagnostic(http);
+      setApiDiagnostic(result);
+    } finally {
+      setTestingApi(false);
+    }
+  };
+
+  const serverMeta = SERVER_STATUS_META[serverStatus] || SERVER_STATUS_META.UNKNOWN;
 
   return (
     <ScreenContainer scroll={false}>
@@ -90,9 +131,15 @@ export default function SyncCenterScreen() {
             title={isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}
             onPress={handleSyncNow}
             loading={isSyncing}
-            disabled={!isOnline}
+            disabled={!isOnline || serverStatus === 'SERVER_UNREACHABLE'}
           />
-          <Button title="Hanya unduh data master" onPress={handleDownloadOnly} loading={isSyncing} disabled={!isOnline} variant="secondary" />
+          <Button
+            title="Hanya unduh data master"
+            onPress={handleDownloadOnly}
+            loading={isSyncing}
+            disabled={!isOnline || serverStatus === 'SERVER_UNREACHABLE'}
+            variant="secondary"
+          />
 
           {lastDownload && (
             <Text style={styles.detailText}>
@@ -105,6 +152,47 @@ export default function SyncCenterScreen() {
               Upload terakhir: {lastUpload.success} berhasil, {lastUpload.failed} gagal, {lastUpload.deferred} menunggu dependensi,{' '}
               {lastUpload.photosUploaded} foto terkirim.
             </Text>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Server">
+          <View style={styles.serverRow}>
+            <Text style={[styles.serverStatusText, { color: serverMeta.color }]}>
+              {serverMeta.emoji} {serverMeta.label}
+            </Text>
+            {lastCheckedAt && (
+              <Text style={styles.serverMeta}>
+                Diperiksa {formatDateTime(lastCheckedAt)}
+                {lastLatencyMs != null ? ` - ${lastLatencyMs}ms` : ''}
+              </Text>
+            )}
+          </View>
+          <Text style={styles.serverAddress}>Server: 10.110.1.9</Text>
+          {serverStatus === 'SERVER_UNREACHABLE' && (
+            <Text style={styles.errorNote}>
+              Kemungkinan: server mati - WiFi berbeda - port/API tidak tersedia - firewall - VPN tidak aktif.
+            </Text>
+          )}
+
+          <View style={styles.buttonRow}>
+            <View style={styles.buttonHalf}>
+              <Button title={testingServer ? 'Menguji...' : 'Tes Koneksi Server'} onPress={handleTestServer} loading={testingServer} variant="secondary" />
+            </View>
+            <View style={styles.buttonHalf}>
+              <Button title={testingApi ? 'Menguji...' : 'Tes API'} onPress={handleTestApi} loading={testingApi} variant="secondary" disabled={!isOnline} />
+            </View>
+          </View>
+
+          {apiDiagnostic && (
+            <View style={styles.diagnosticBox}>
+              <Text style={styles.diagnosticLine}>{apiDiagnostic.backendReachable ? '✅' : '❌'} Backend</Text>
+              <Text style={styles.diagnosticLine}>{apiDiagnostic.apiOk ? '✅' : '❌'} API</Text>
+              <Text style={styles.diagnosticLine}>{apiDiagnostic.databaseOk ? '✅' : '❌'} Database</Text>
+              <Text style={styles.diagnosticLine}>
+                {apiDiagnostic.authOk === 'N/A' ? '—' : apiDiagnostic.authOk ? '✅' : '❌'} Authentication
+              </Text>
+              {apiDiagnostic.error && <Text style={styles.errorNote}>{apiDiagnostic.error}</Text>}
+            </View>
           )}
         </SectionCard>
       </View>
@@ -144,6 +232,14 @@ const styles = StyleSheet.create({
   offlineNote: { fontSize: 12, color: colors.danger, marginTop: 6, fontWeight: '600' },
   errorNote: { fontSize: 12, color: colors.danger, marginTop: 6 },
   detailText: { fontSize: 11, color: colors.textMuted, marginTop: 6 },
+  serverRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' },
+  serverStatusText: { fontSize: 14, fontWeight: '700' },
+  serverMeta: { fontSize: 10, color: colors.textMuted },
+  serverAddress: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  buttonRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  buttonHalf: { flex: 1 },
+  diagnosticBox: { marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
+  diagnosticLine: { fontSize: 12, color: colors.text, marginTop: 2 },
   listContent: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
   listHeader: { fontSize: 12, fontWeight: '700', color: colors.textMuted, marginTop: spacing.sm, marginBottom: spacing.xs },
   itemRow: {

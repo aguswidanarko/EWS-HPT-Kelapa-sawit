@@ -1,3 +1,12 @@
+// *** STATUS: LEGACY -- DO NOT DEPLOY FROM THIS FILE ***
+// BRD EWS HPT V3.2.1 section 27 (Deployment Structure): the ACTIVE entry point is
+// backend/src/app.js + backend/src/index.js (see package.json "main"/"start": src/index.js).
+// This root-level copy predates that move, is missing routes added since (e.g.
+// /api/master-blok-import, /api/master-user-mobile-import -- see backend/src/app.js), and is not
+// referenced by npm start/main. Kept only so a stray `node app.js` doesn't hard-crash; do not
+// edit business logic here -- change backend/src/app.js instead. Safe to delete in a future
+// cleanup once nothing outside this repo still points at it.
+
 // Express app wiring. CommonJS throughout (see README "Module system").
 
 const express = require('express');

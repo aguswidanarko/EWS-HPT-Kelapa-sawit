@@ -112,13 +112,24 @@ function makeBatchHandler(kind, ingestFn) {
             success++;
             continue;
           }
+        } else if (item.local_id) {
+          // BRD V3.2.1 section 16 (Duplicate Protection / idempotency): the mobile app never got a
+          // server_id back for this local_id -- either it truly never uploaded, or it DID and only
+          // the response was lost (timeout/dropped connection after the server had already
+          // committed the insert). Retrying the same local_id must not create a second row.
+          const existing = db.prepare(`SELECT * FROM ${table} WHERE local_id=? ORDER BY id DESC LIMIT 1`).get(item.local_id);
+          if (existing) {
+            results.push({ local_id: item.local_id, server_id: existing.server_id, status: 'SYNCED', id: existing.id, already_synced: true });
+            success++;
+            continue;
+          }
         }
         const ingested = ingestFn({ ...item, source: 'MOBILE', device_id, user_id: item.user_id || req.user.id }, { user_id: req.user.id });
         results.push({ local_id: item.local_id, server_id: ingested.row.server_id, status: 'SYNCED', id: ingested.row.id });
         success++;
       } catch (e) {
         failed++;
-        results.push({ local_id: item.local_id, status: 'FAILED', error: e.message });
+        results.push({ local_id: item.local_id, status: 'FAILED', error: e.message, error_code: e.code || 'VALIDATION_ERROR' });
       }
     }
 

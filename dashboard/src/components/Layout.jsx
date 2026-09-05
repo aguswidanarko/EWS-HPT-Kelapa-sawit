@@ -1,5 +1,49 @@
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { healthApi } from '../api/resources';
+
+// BRD EWS HPT V3.2.1 section 23 (Dashboard Connectivity Indicator): poll GET /health so the
+// dashboard can tell "backend down" apart from "my own network is fine" - same distinction Mobile
+// makes with its Server Connectivity Test (section 11).
+const HEALTH_POLL_MS = 30000;
+
+function BackendStatusPill() {
+  const [status, setStatus] = useState('CHECKING'); // CHECKING | CONNECTED | DISCONNECTED
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    let timer;
+    const check = async () => {
+      try {
+        await healthApi.check();
+        if (mounted.current) setStatus('CONNECTED');
+      } catch {
+        if (mounted.current) setStatus('DISCONNECTED');
+      } finally {
+        if (mounted.current) timer = setTimeout(check, HEALTH_POLL_MS);
+      }
+    };
+    check();
+    return () => {
+      mounted.current = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  const config = {
+    CHECKING: { emoji: '⚪', label: 'Memeriksa backend...' },
+    CONNECTED: { emoji: '🟢', label: 'Backend Connected' },
+    DISCONNECTED: { emoji: '🔴', label: 'Backend Disconnected' },
+  }[status];
+
+  return (
+    <span className={'backend-status-pill backend-status-' + status.toLowerCase()} title="GET /health">
+      {config.emoji} {config.label}
+    </span>
+  );
+}
 
 const NAV_SECTIONS = [
   {
@@ -104,6 +148,7 @@ export default function Layout() {
         <header className="topbar">
           <div className="topbar-title">EWS Plantation — Early Warning, Action, Monitoring</div>
           <div className="topbar-user">
+            <BackendStatusPill />
             <span>{user?.name}</span>
             <span className="role-pill">{user?.role_name}</span>
             <button className="btn-logout" onClick={handleLogout}>Keluar</button>

@@ -1,3 +1,11 @@
+// *** STATUS: LEGACY -- DO NOT DEPLOY FROM THIS FILE ***
+// BRD EWS HPT V3.2.1 section 27 (Deployment Structure): the ACTIVE entry point is
+// backend/src/index.js (see package.json "main"/"start": src/index.js). This root-level copy is
+// a stale duplicate kept only so a stray `node index.js` doesn't hard-crash -- it does not bind
+// HOST=0.0.0.0 explicitly (see src/index.js) and its sibling ./app.js is missing routes added
+// since. Do not edit business logic here. Safe to delete in a future cleanup once nothing outside
+// this repo still points at it.
+
 // Entry point.
 const db = require('./db/db'); // ensures schema is loaded before the app starts handling requests
 const app = require('./app');

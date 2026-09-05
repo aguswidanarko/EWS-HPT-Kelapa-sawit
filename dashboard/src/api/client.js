@@ -1,6 +1,24 @@
 import axios from 'axios';
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+// BRD EWS HPT V3.2.1 section 8 (Dashboard API Configuration) + section 9 (API URL
+// Normalization): production must not depend on a localhost/: 4000 fallback, and the base URL
+// must not end up as `/api/api` or `//api` if VITE_API_URL is set with (or without) a trailing
+// `/api` already.
+export function normalizeApiBaseUrl(raw) {
+  const trimmed = (raw || '').trim().replace(/\/+$/, '');
+  if (!trimmed) return trimmed;
+  const match = trimmed.match(/^(https?:\/\/)(.*)$/i);
+  const protocol = match ? match[1] : '';
+  let rest = (match ? match[2] : trimmed).replace(/\/{2,}/g, '/');
+  rest = rest.replace(/(\/api)+$/i, '');
+  return `${protocol}${rest}/api`;
+}
+
+// BRD section 28 (Environment Management): dashboard dev and LAN production both point at the
+// same shared server (10.110.1.9) in this org's workflow - so the fallback matches that instead
+// of `localhost:4000`, which section 8 explicitly says production must not rely on. Still fully
+// overridable via VITE_API_URL (e.g. for the eventual https://api.domain.com/api deployment).
+export const API_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL) || 'http://10.110.1.9/api';
 
 const client = axios.create({ baseURL: API_URL });
 

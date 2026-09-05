@@ -176,6 +176,22 @@ table {
 }
 .btn-logout:hover { background: var(--surface-alt); color: var(--text); }
 
+/* BRD EWS HPT V3.2.1 section 23: Dashboard Connectivity Indicator */
+.backend-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.backend-status-connected { color: #1a7f37; border-color: #b7e4c7; background: #eafaf1; }
+.backend-status-disconnected { color: #c0392b; border-color: #f3c1c1; background: #fdecea; }
+.backend-status-checking { color: var(--text-muted); }
+
 .page-content {
   padding: 22px;
   flex: 1;
