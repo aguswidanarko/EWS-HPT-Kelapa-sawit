@@ -23,8 +23,12 @@ require('./db/seedEwsDictionaryV3').seedEwsDictionaryV3(db);
 require('./db/seedAssessmentMappingV31').seedAssessmentMappingV31(db);
 
 const PORT = process.env.PORT || 4000;
+// BRD V3.2.1 section 5: must bind 0.0.0.0 (all interfaces), not just localhost/127.0.0.1, so
+// Nginx (reverse proxy on :80, same host) and any LAN diagnostic call can reach it. Overridable
+// via HOST for environments that need to restrict the bind address.
+const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   // eslint-disable-next-line no-console
-  console.log(`EWS HPT backend listening on http://localhost:${PORT}`);
+  console.log(`EWS HPT backend listening on ${HOST}:${PORT}`);
 });

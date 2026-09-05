@@ -1187,3 +1187,14 @@ CREATE TABLE IF NOT EXISTS calculation_result (
 );
 CREATE INDEX IF NOT EXISTS idx_calculation_result_assessment ON calculation_result(assessment_id);
 CREATE INDEX IF NOT EXISTS idx_calculation_result_ews ON calculation_result(ews_id);
+
+-- BRD EWS HPT V3.2.1 section 16 (Duplicate Protection): routes/sync.js's batch upload handler
+-- looks up an incoming record by local_id before inserting, so a retry that never received its
+-- server_id back (e.g. the first upload's response timed out after the server had already
+-- committed it) reuses the existing row instead of creating a second one. Non-unique (server_id
+-- already has the UNIQUE constraint that guarantees no duplicate on the identifier the client DOES
+-- receive back) -- this is a pure read-path speed-up, not a new data constraint.
+CREATE INDEX IF NOT EXISTS idx_detection_local_id ON detection(local_id);
+CREATE INDEX IF NOT EXISTS idx_sensus_local_id ON sensus(local_id);
+CREATE INDEX IF NOT EXISTS idx_treatment_local_id ON treatment(local_id);
+CREATE INDEX IF NOT EXISTS idx_mortality_local_id ON mortality(local_id);

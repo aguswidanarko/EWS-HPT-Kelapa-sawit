@@ -4,6 +4,19 @@ import { useAuth, isAdmin } from '../context/AuthContext';
 import { Loading, ErrorBox, Empty } from '../components/Common';
 import { fmtDateTime } from '../utils/format';
 
+/** BRD EWS HPT V3.2.1 section 24 example: 🟢 recent success, 🟠 completed with failures (or a bit
+ * stale), 🔴 currently failing/stuck. "Recent" = within the last 24h, matching how often field
+ * staff are expected to sync at least once. */
+function mobileSyncStatusEmoji(s) {
+  if (s.last_status !== 'COMPLETED') return '🔴';
+  const failed = Number(s.total_failed || 0);
+  const lastAt = s.last_sync_finished || s.last_sync_started;
+  const ageMs = lastAt ? Date.now() - new Date(lastAt).getTime() : Infinity;
+  const isStale = ageMs > 24 * 60 * 60 * 1000;
+  if (failed > 0 || isStale) return '🟠';
+  return '🟢';
+}
+
 export default function SystemSettings() {
   const { user } = useAuth();
   const [dq, setDq] = useState(null);
@@ -76,19 +89,26 @@ export default function SystemSettings() {
 
           <div className="card card-pad">
             <div className="section-title mt-0">Monitoring Synchronization (Mobile)</div>
+            {/* BRD EWS HPT V3.2.1 section 24 (Dashboard Sync Monitoring): this table previously
+                read s.user_id/finished_at/started_at/success_count/failed_count, none of which
+                exist on the /api/sync-monitoring response (see backend routes/syncMonitoring.js -
+                it returns user_name/last_sync_finished/last_sync_started/total_success/
+                total_failed) so every row silently rendered blank. Fixed to the real field names
+                and added the 🟢/🟠/🔴 status column the BRD example calls for. */}
             {syncError && <ErrorBox error={syncError} />}
             {sync.length === 0 ? <Empty label="Belum ada aktivitas sinkronisasi mobile tercatat." /> : (
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>User</th><th>Device</th><th>Last Sync</th><th>Sukses</th><th>Gagal</th></tr></thead>
+                  <thead><tr><th>Petugas</th><th>Device</th><th>Last Sync</th><th>Sukses</th><th>Gagal</th><th>Status</th></tr></thead>
                   <tbody>
                     {sync.map((s, i) => (
                       <tr key={i}>
-                        <td>{s.user_id}</td>
+                        <td>{s.user_name || s.user_id}</td>
                         <td>{s.device_id}</td>
-                        <td>{fmtDateTime(s.finished_at || s.started_at)}</td>
-                        <td>{s.success_count}</td>
-                        <td>{s.failed_count}</td>
+                        <td>{fmtDateTime(s.last_sync_finished || s.last_sync_started)}</td>
+                        <td>{s.total_success ?? 0}</td>
+                        <td>{s.total_failed ?? 0}</td>
+                        <td>{mobileSyncStatusEmoji(s)}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -17,16 +17,18 @@ React Native offline-first mobile app (`../mobile`). Implements everything speci
 cd backend
 npm install
 npm run seed     # wipes and re-populates demo data (safe to re-run)
-npm start         # listens on http://localhost:4000 (PORT env var to override)
+npm start         # listens on http://0.0.0.0:4000 (HOST/PORT env vars to override)
 ```
 
-Health check: `GET /health`.
+Health check: `GET /health` (no auth required; works from the server itself and, for LAN
+diagnosis, from Mobile too - BRD EWS HPT V3.2.1 section 6).
 
-Environment variables (all optional, sane dev defaults baked in):
+Environment variables (all optional, sane dev defaults baked in - see `.env.example`):
 
 | Var | Default | Purpose |
 |---|---|---|
-| `PORT` | `4000` | HTTP port |
+| `HOST` | `0.0.0.0` | Bind address. Must stay `0.0.0.0` (all interfaces) in production so Nginx (same host, reverse-proxying `/api` on :80 - see section 12 below) can reach it; only narrow this for a setup that truly needs a restricted bind address |
+| `PORT` | `4000` | HTTP port. BRD section 26: keep this **internal-only** in the firewall (`4000 INTERNAL ONLY`, not open to the LAN/internet) - Nginx is the only public door |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | dev secrets in code | **Change in production** |
 | `JWT_ACCESS_EXPIRES_IN` | `15m` | Access token lifetime |
 | `JWT_REFRESH_EXPIRES_IN` | `30d` | Refresh token lifetime (supports "session aman dipakai offline") |
@@ -412,3 +414,25 @@ a `server_id` conflict (versioned update + `AUDIT_LOG` entry, never overwritten)
 status transitions, GIS blok severity coloring, GeoJSON layer upload/publish/versioning, Excel
 import preview→commit (rejecting commit without `confirm:true`), RBAC (a `PETUGAS_DETEKSI` account
 gets 403 on master-data writes but 201 on posting a detection), and the backup script.
+
+## 12. Deployment - Nginx gateway (BRD EWS HPT V3.2.1 "Connectivity & Sync Stabilization")
+
+As of V3.2.1, Nginx is the single public gateway on the production server (`10.110.1.9`) for
+**both** the dashboard and the API - Mobile and the dashboard now hit the exact same origin
+(`http://10.110.1.9/api`) instead of Mobile going straight to this backend's `:4000`. See BRD "EWS
+HPT V3.2.1 - Connectivity, API Configuration & Synchronization Stabilization" sections 3 and 7 for
+the full rationale and architecture diagram.
+
+- This backend: `HOST=0.0.0.0 PORT=4000 npm start` (or `npm run render-start` on Render - see
+  `package.json`). Port 4000 should be reachable from `127.0.0.1`/the LAN interface Nginx uses,
+  but **not** opened to the wider LAN/internet in the firewall (section 25/26).
+- Nginx: reverse-proxies `/api/` to `http://127.0.0.1:4000/api/` and serves the built dashboard
+  (`../dashboard`'s `npm run build` output) at `/`. A starting-point config living outside this
+  repo's runtime path is at `../deploy/nginx.ews-hpt.conf.example` - copy it into your server's
+  Nginx sites config and adjust `server_name`/TLS/dashboard build path for your environment; it is
+  a reference, not something this repo runs directly.
+- Recommended rollout order (BRD section 35): backup DB → deploy this backend → verify `GET
+  /health` → update/reload Nginx → verify `GET /api/...` through Nginx → deploy the dashboard
+  build → verify the dashboard loads and shows "Backend Connected" → build & install the Mobile
+  APK on one device → verify offline input, reconnect/sync, and the "Tes Koneksi Server"/"Tes API"
+  buttons in Sync Center → pilot on 2-3 devices → roll out to the rest.

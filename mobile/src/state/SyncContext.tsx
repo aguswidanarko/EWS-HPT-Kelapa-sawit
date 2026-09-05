@@ -5,7 +5,14 @@ import type { DownloadSummary, UploadSummary } from '../sync/engine';
 import * as metaRepo from '../db/repo/metaRepo';
 import type { SyncCounts } from '../types';
 
-export type ConnectionPillStatus = 'ONLINE' | 'SYNCING' | 'OFFLINE';
+// BRD EWS HPT V3.2.1 section 10 (Mobile Connectivity Status): the pill used to be driven purely
+// by device network state (see NetContext.tsx's old isOnline-only implementation), so it could
+// read "Online" while the EWS HPT backend itself was completely unreachable. It now folds in
+// NetContext's serverStatus (GET /health) so OFFLINE / SERVER_UNREACHABLE / SERVER_CONNECTED map
+// 1:1 to BRD section 10.1-10.3. CHECKING is a transitional 4th state (the brief window before the
+// first health check on app open resolves) so the pill never has to *guess* connected vs
+// unreachable - see ConnectionPill.tsx for the label/emoji per state.
+export type ConnectionPillStatus = 'OFFLINE' | 'CHECKING' | 'SERVER_UNREACHABLE' | 'SYNCING' | 'SERVER_CONNECTED';
 
 interface SyncContextValue {
   pillStatus: ConnectionPillStatus;
@@ -39,7 +46,7 @@ const EMPTY_COUNTS: SyncCounts = {
 };
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
-  const { isOnline } = useNet();
+  const { isOnline, serverStatus } = useNet();
   const [isSyncing, setIsSyncing] = useState(false);
   const [pending, setPending] = useState<SyncCounts>(EMPTY_COUNTS);
   const [lastDownload, setLastDownload] = useState<DownloadSummary | null>(null);
@@ -48,6 +55,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const mounted = useRef(true);
+
+  // A sync attempt is worth trying unless we're sure the server is unreachable - CHECKING/UNKNOWN
+  // (health check hasn't resolved yet) should not block the user from trying, only a confirmed
+  // SERVER_UNREACHABLE should (BRD section 14: offline-first must keep working; a sync attempt
+  // that fails just leaves data at READY_TO_SYNC, same as always).
+  const canAttemptSync = isOnline && serverStatus !== 'SERVER_UNREACHABLE';
 
   useEffect(() => {
     mounted.current = true;
@@ -74,7 +87,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const notifyDataChanged = useCallback(() => setVersion((v) => v + 1), []);
 
   const runDownload = useCallback(async (): Promise<DownloadSummary | null> => {
-    if (!isOnline) return null;
+    if (!canAttemptSync) return null;
     setIsSyncing(true);
     setSyncError(null);
     try {
@@ -88,10 +101,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (mounted.current) setIsSyncing(false);
     }
-  }, [isOnline]);
+  }, [canAttemptSync]);
 
   const runUpload = useCallback(async (): Promise<UploadSummary | null> => {
-    if (!isOnline) return null;
+    if (!canAttemptSync) return null;
     setIsSyncing(true);
     setSyncError(null);
     try {
@@ -109,13 +122,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (mounted.current) setIsSyncing(false);
     }
-  }, [isOnline, refreshPending]);
+  }, [canAttemptSync, refreshPending]);
 
   const runFullSync = useCallback(async () => {
-    if (!isOnline) return;
+    if (!canAttemptSync) return;
     await runUpload();
     await runDownload();
-  }, [isOnline, runUpload, runDownload]);
+  }, [canAttemptSync, runUpload, runDownload]);
 
   const pendingTotal =
     pending.deteksi +
@@ -127,7 +140,16 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     pending.actionPlan +
     pending.agroObservation +
     pending.assessment;
-  const pillStatus: ConnectionPillStatus = !isOnline ? 'OFFLINE' : isSyncing ? 'SYNCING' : 'ONLINE';
+
+  const pillStatus: ConnectionPillStatus = !isOnline
+    ? 'OFFLINE'
+    : isSyncing
+    ? 'SYNCING'
+    : serverStatus === 'SERVER_UNREACHABLE'
+    ? 'SERVER_UNREACHABLE'
+    : serverStatus === 'SERVER_CONNECTED'
+    ? 'SERVER_CONNECTED'
+    : 'CHECKING';
 
   const value = useMemo(
     () => ({

@@ -4,6 +4,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { errorHandler } = require('./middleware/errorHandler');
+const { normalizeErrorResponses } = require('./middleware/errorResponseNormalizer');
+const { requestLogger } = require('./middleware/requestLogger');
 const { UPLOAD_ROOT } = require('./middleware/upload');
 
 const app = express();
@@ -11,6 +13,13 @@ const app = express();
 app.use(cors()); // internal dev build: all origins allowed (dashboard + mobile call this API)
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// BRD V3.2.1 section 22: log every request (method/path/status/duration/ip/user). Mounted before
+// the routes so it wraps the whole request lifecycle via the 'finish' event.
+app.use(requestLogger);
+// BRD V3.2.1 section 19: standardize error responses (adds success:false + error_code without
+// changing the existing `error` string field -- see the middleware's header comment).
+app.use(normalizeErrorResponses);
 
 // Static file serving for uploaded photos / knowledge base docs / GeoJSON layers.
 app.use('/uploads', express.static(UPLOAD_ROOT));

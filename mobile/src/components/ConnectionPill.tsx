@@ -3,15 +3,19 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useSync } from '../state/SyncContext';
 import { colors } from '../theme';
 
-/** SPEC.md "Header status koneksi": 🟢 Online / 🟠 Sinkronisasi / 🔴 Offline - a small persistent
- * banner/pill shown app-wide, driven by NetInfo + current sync state. */
+/** BRD EWS HPT V3.2.1 section 10 (Mobile Connectivity Status): the pill now reflects actual
+ * backend reachability (GET /health via NetContext), not just device network state - see
+ * SyncContext.tsx's pillStatus derivation. Labels/emoji match section 10.1-10.3 and section 13's
+ * Sync Center mock-up exactly ("🔴 OFFLINE", "🟠 SERVER TIDAK TERHUBUNG", "🟢 SERVER TERHUBUNG"). */
 export default function ConnectionPill() {
   const { pillStatus, pendingTotal } = useSync();
 
   const config = {
-    ONLINE: { emoji: '🟢', label: 'Online', color: colors.online },
-    SYNCING: { emoji: '🟠', label: 'Sinkronisasi...', color: colors.syncing },
     OFFLINE: { emoji: '🔴', label: 'Offline', color: colors.offline },
+    CHECKING: { emoji: '⚪', label: 'Memeriksa server...', color: colors.textMuted },
+    SERVER_UNREACHABLE: { emoji: '🟠', label: 'Server Tidak Terhubung', color: colors.syncing },
+    SYNCING: { emoji: '🟠', label: 'Sinkronisasi...', color: colors.syncing },
+    SERVER_CONNECTED: { emoji: '🟢', label: 'Server Terhubung', color: colors.online },
   }[pillStatus];
 
   return (
