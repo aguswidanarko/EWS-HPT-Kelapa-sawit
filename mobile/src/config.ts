@@ -4,10 +4,16 @@
  * EXPO_PUBLIC_API_URL is baked into the JS bundle at build/start time (Expo's `EXPO_PUBLIC_`
  * env var convention - see https://docs.expo.dev/guides/environment-variables/). BRD EWS HPT
  * V3.2.1 section 3/4.1: Mobile talks to the Nginx gateway (e.g.
- * http://ews-hpt-dashboard.first-resources.com/api), never straight to the backend's :4000 - the
+ * https://ews-hpt-dashboard.first-resources.com/api), never straight to the backend's :4000 - the
  * reverse proxy is what makes that origin reachable in the first place. On a real Android
  * device/emulator this also MUST be a real, resolvable hostname/IP, never `localhost` - see
  * README.md for details.
+ *
+ * MUST be `https://`, not `http://`: this host is now fronted by Cloudflare on the public
+ * internet, which redirects plain HTTP to HTTPS. A browser follows that redirect transparently,
+ * but the app's networking stack does not reliably re-send a POST body across it - login would
+ * intermittently fail with a bare network error instead of a clear "wrong password". Requesting
+ * https:// directly avoids depending on that redirect at all.
  *
  * normalizeApiBaseUrl guards against the two malformed shapes BRD section 9 calls out
  * (`/api/api` from a value that already ends in `/api` plus an accidental extra one, and `//api`
@@ -27,14 +33,17 @@ export function normalizeApiBaseUrl(raw: string | undefined): string {
 }
 
 /** BRD EWS HPT V3.2.1 section 28 (Environment Management): production now runs against the
- * internet-facing dashboard/gateway host (http://ews-hpt-dashboard.first-resources.com) - so the
- * fallback below matches EXPO_PUBLIC_API_URL's expected value rather than `localhost`, which BRD
- * section 4.1 explicitly says not to rely on (on a real Android device `localhost` resolves to
- * the device itself, never the server). Still fully overridable via EXPO_PUBLIC_API_URL for
- * anyone who does need a different target (e.g. a developer's own LAN server or emulator host).
+ * internet-facing dashboard/gateway host (https://ews-hpt-dashboard.first-resources.com,
+ * Cloudflare-fronted) - so the fallback below matches EXPO_PUBLIC_API_URL's expected value rather
+ * than `localhost`, which BRD section 4.1 explicitly says not to rely on (on a real Android
+ * device `localhost` resolves to the device itself, never the server). Still fully overridable
+ * via EXPO_PUBLIC_API_URL for anyone who does need a different target (e.g. a developer's own LAN
+ * server or emulator host) - note a plain-HTTP LAN override only reaches this server directly
+ * while on the office network (see README.md); it will not work once off-site since the LAN
+ * origin has no TLS listener of its own.
  */
 export const API_BASE_URL =
-  normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_URL) || 'http://ews-hpt-dashboard.first-resources.com/api';
+  normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_URL) || 'https://ews-hpt-dashboard.first-resources.com/api';
 
 export const APP_NAME = 'EWS HPT Mobile';
 

@@ -6,8 +6,11 @@
 # for the full rollout order).
 #
 # What this achieves (BRD section 3 architecture):
-#   Mobile  --http://ews-hpt-dashboard.first-resources.com/api-->   Nginx :80  --/api--> Node backend :4000 (127.0.0.1 only)
-#   Browser --http://ews-hpt-dashboard.first-resources.com------->   Nginx :80  --/---->  dashboard static build
+#   Mobile  --https://ews-hpt-dashboard.first-resources.com/api-->   Cloudflare --> Nginx :80  --/api--> Node backend :4000 (127.0.0.1 only)
+#   Browser --https://ews-hpt-dashboard.first-resources.com------->   Cloudflare --> Nginx :80  --/---->  dashboard static build
+# Cloudflare terminates TLS for the public internet and proxies to this Nginx over plain HTTP on
+# :80 - Nginx itself does not need its own certificate. Devices on the office LAN (via the
+# internal-only DNS override) skip Cloudflare and hit this Nginx directly over plain HTTP instead.
 # Mobile and Dashboard hit the exact same origin/gateway; the backend's :4000 is never exposed
 # directly to the LAN (BRD section 25/26 - keep 4000 INTERNAL ONLY in the firewall).
 

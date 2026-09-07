@@ -419,7 +419,9 @@ gets 403 on master-data writes but 201 on posting a detection), and the backup s
 
 As of V3.2.1, Nginx is the single public gateway on the production server
 (`ews-hpt-dashboard.first-resources.com`) for **both** the dashboard and the API - Mobile and the
-dashboard now hit the exact same origin (`http://ews-hpt-dashboard.first-resources.com/api`)
+dashboard now hit the exact same origin (`https://ews-hpt-dashboard.first-resources.com/api`,
+Cloudflare-fronted - mobile must use `https://`, not `http://`, since the app's networking stack
+doesn't reliably follow Cloudflare's http→https redirect on POST requests)
 instead of Mobile going straight to this backend's `:4000`. See BRD "EWS HPT V3.2.1 -
 Connectivity, API Configuration & Synchronization Stabilization" sections 3 and 7 for the full
 rationale and architecture diagram.

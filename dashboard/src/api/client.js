@@ -15,10 +15,12 @@ export function normalizeApiBaseUrl(raw) {
 }
 
 // BRD section 28 (Environment Management): production now runs against the internet-facing
-// dashboard/gateway host (http://ews-hpt-dashboard.first-resources.com) - so the fallback matches
-// that instead of `localhost:4000`, which section 8 explicitly says production must not rely on.
-// Still fully overridable via VITE_API_URL (e.g. for a developer's own LAN server).
-export const API_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL) || 'http://ews-hpt-dashboard.first-resources.com/api';
+// dashboard/gateway host (https://ews-hpt-dashboard.first-resources.com, Cloudflare-fronted) - so
+// the fallback matches that instead of `localhost:4000`, which section 8 explicitly says
+// production must not rely on. Must be https:// - the dashboard itself only loads over https now
+// (Cloudflare redirects plain HTTP), and browsers block http:// XHR calls from an https:// page as
+// mixed content. Still fully overridable via VITE_API_URL (e.g. for a developer's own LAN server).
+export const API_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL) || 'https://ews-hpt-dashboard.first-resources.com/api';
 
 const client = axios.create({ baseURL: API_URL });
 

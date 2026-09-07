@@ -8,8 +8,8 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
-/** API_BASE_URL is e.g. "http://ews-hpt-dashboard.first-resources.com/api" - health lives at
- * "http://ews-hpt-dashboard.first-resources.com/health". */
+/** API_BASE_URL is e.g. "https://ews-hpt-dashboard.first-resources.com/api" - health lives at
+ * "https://ews-hpt-dashboard.first-resources.com/health". */
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/i, '');
 
 const HEALTH_TIMEOUT_MS = 8000;
