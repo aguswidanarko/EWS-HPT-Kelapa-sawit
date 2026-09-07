@@ -7,7 +7,7 @@ import Button from '../components/Button';
 import { useSync } from '../state/SyncContext';
 import { useNet } from '../state/NetContext';
 import { http } from '../api/client';
-import { checkApiDiagnostic, type ApiDiagnosticResult } from '../api/health';
+import { API_ORIGIN, checkApiDiagnostic, type ApiDiagnosticResult } from '../api/health';
 import { getRiwayat, type RiwayatItem } from '../db/repo/riwayatRepo';
 import { colors, spacing } from '../theme';
 import { formatDateTime } from '../utils/format';
@@ -167,7 +167,7 @@ export default function SyncCenterScreen() {
               </Text>
             )}
           </View>
-          <Text style={styles.serverAddress}>Server: 10.110.1.9</Text>
+          <Text style={styles.serverAddress}>Server: {API_ORIGIN}</Text>
           {serverStatus === 'SERVER_UNREACHABLE' && (
             <Text style={styles.errorNote}>
               Kemungkinan: server mati - WiFi berbeda - port/API tidak tersedia - firewall - VPN tidak aktif.

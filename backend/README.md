@@ -417,11 +417,12 @@ gets 403 on master-data writes but 201 on posting a detection), and the backup s
 
 ## 12. Deployment - Nginx gateway (BRD EWS HPT V3.2.1 "Connectivity & Sync Stabilization")
 
-As of V3.2.1, Nginx is the single public gateway on the production server (`10.110.1.9`) for
-**both** the dashboard and the API - Mobile and the dashboard now hit the exact same origin
-(`http://10.110.1.9/api`) instead of Mobile going straight to this backend's `:4000`. See BRD "EWS
-HPT V3.2.1 - Connectivity, API Configuration & Synchronization Stabilization" sections 3 and 7 for
-the full rationale and architecture diagram.
+As of V3.2.1, Nginx is the single public gateway on the production server
+(`ews-hpt-dashboard.first-resources.com`) for **both** the dashboard and the API - Mobile and the
+dashboard now hit the exact same origin (`http://ews-hpt-dashboard.first-resources.com/api`)
+instead of Mobile going straight to this backend's `:4000`. See BRD "EWS HPT V3.2.1 -
+Connectivity, API Configuration & Synchronization Stabilization" sections 3 and 7 for the full
+rationale and architecture diagram.
 
 - This backend: `HOST=0.0.0.0 PORT=4000 npm start` (or `npm run render-start` on Render - see
   `package.json`). Port 4000 should be reachable from `127.0.0.1`/the LAN interface Nginx uses,
