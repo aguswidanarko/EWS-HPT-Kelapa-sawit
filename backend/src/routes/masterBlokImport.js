@@ -33,7 +33,12 @@ const { uploadExcel } = require('../middleware/upload');
 const { auditFromReq } = require('../services/audit');
 
 const router = express.Router();
-router.use(requireAuth);
+// NOTE (BRD-08 fix): requireAuth is applied further below, AFTER the /template route, not here at
+// the top of the router. /template only returns a blank xlsx template (no data, no auth needed),
+// and the dashboard's "Unduh Template" button navigates to it directly (<a href>/window.open),
+// which cannot attach an Authorization: Bearer header - so gating it behind requireAuth made every
+// download fail with AUTH_ERROR "Missing bearer token" even for logged-in admins. Every other
+// route on this router (preview/commit/prune/log) still requires auth as before.
 
 const SHEET_PT = 'MASTER_PT';
 const SHEET_AFD = 'MASTER_AFD';
@@ -251,6 +256,9 @@ router.get(
     res.send(buf);
   })
 );
+
+// Everything below requires a logged-in user (preview/commit/prune/log all touch real data or DB state).
+router.use(requireAuth);
 
 // ------------------------------------------------------------------ preview
 

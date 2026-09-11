@@ -10,6 +10,15 @@ const { auditFromReq } = require('../services/audit');
 const router = express.Router();
 router.use(requireAuth);
 
+// BRD-07 fix (SIT #102): phone accepted any character with zero validation, client or server
+// side. Kept permissive (digits, +, spaces, dashes, parens - covers "0812-3456-7890",
+// "+62 812 3456 7890", etc.) but rejects anything else, mirroring dashboard/src/pages/PicUser.jsx's
+// client-side check so a direct API call can't bypass it.
+const PHONE_PATTERN = /^[0-9+\-\s()]{8,20}$/;
+function invalidPhone(phone) {
+  return phone !== undefined && phone !== null && phone !== '' && !PHONE_PATTERN.test(phone);
+}
+
 function userRow(id) {
   return db
     .prepare(
@@ -56,6 +65,9 @@ router.post(
     if (!name || !email || !password || !role_code) {
       return res.status(400).json({ error: 'name, email, password, role_code wajib diisi' });
     }
+    if (invalidPhone(phone)) {
+      return res.status(400).json({ error: 'Format nomor telepon tidak valid.' });
+    }
     const role = db.prepare('SELECT id FROM role WHERE code=?').get(role_code);
     if (!role) return res.status(400).json({ error: `role_code tidak dikenal: ${role_code}` });
     const password_hash = bcrypt.hashSync(password, 10);
@@ -87,6 +99,9 @@ router.put(
     const before = userRow(req.params.id);
     if (!before) return res.status(404).json({ error: 'User not found' });
     const { name, phone, estate_id, afdeling_id, area_kerja, is_active, role_code, password } = req.body;
+    if (invalidPhone(phone)) {
+      return res.status(400).json({ error: 'Format nomor telepon tidak valid.' });
+    }
     const params = { id: req.params.id };
     const sets = [];
     if (name !== undefined) { sets.push('name=@name'); params.name = name; }
@@ -163,6 +178,39 @@ router.post(
     const row = db.prepare('SELECT * FROM pic WHERE id=?').get(info.lastInsertRowid);
     auditFromReq(req, { aktivitas: 'CREATE_PIC', after: row });
     res.status(201).json({ data: row });
+  })
+);
+
+// BRD-15 fix (SIT #111): there was never a PUT /pic/:id route - only GET/POST/DELETE - even though
+// the dashboard's PIC Assignment tab (MasterCrud, which always calls api.update() when editing an
+// existing row) has offered an "Edit" button since it shares that generic component with every
+// other Master Data screen. Editing appeared to work (the form opened, changes could be typed) but
+// silently failed on Simpan with a generic "Gagal menyimpan" - api.update was undefined, so
+// MasterCrud's handleSave threw a plain TypeError with no `.response`, not a real API error.
+router.put(
+  '/pic/:id',
+  requireRole('ADMIN'),
+  asyncHandler(async (req, res) => {
+    const before = db.prepare('SELECT * FROM pic WHERE id=?').get(req.params.id);
+    if (!before) return res.status(404).json({ error: 'Not found' });
+    const { user_id, estate_id, afdeling_id, blok_id, jenis_aktivitas, hpt_id, notification_channel } = req.body;
+    if (!user_id) return res.status(400).json({ error: 'user_id wajib diisi' });
+    db.prepare(
+      `UPDATE pic SET user_id=@user_id, estate_id=@estate_id, afdeling_id=@afdeling_id, blok_id=@blok_id,
+       jenis_aktivitas=@jenis_aktivitas, hpt_id=@hpt_id, notification_channel=@notification_channel WHERE id=@id`
+    ).run({
+      id: req.params.id,
+      user_id,
+      estate_id: estate_id || null,
+      afdeling_id: afdeling_id || null,
+      blok_id: blok_id || null,
+      jenis_aktivitas: jenis_aktivitas || 'ALL',
+      hpt_id: hpt_id || null,
+      notification_channel: notification_channel || 'DASHBOARD',
+    });
+    const after = db.prepare('SELECT * FROM pic WHERE id=?').get(req.params.id);
+    auditFromReq(req, { aktivitas: 'UPDATE_PIC', before, after });
+    res.json({ data: after });
   })
 );
 

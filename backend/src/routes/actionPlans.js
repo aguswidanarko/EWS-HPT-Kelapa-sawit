@@ -22,6 +22,16 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// BRD-11 fix (SIT #34): `evidence_photo_id` is a bare foreign key into `photo` - the dashboard was
+// rendering it as literal text ("Foto #12") with no image or link, because the API never actually
+// sent back the photo's file_path for it to build a URL from. Attach it here so the frontend has
+// something to render.
+function attachEvidencePhoto(row) {
+  if (!row || !row.evidence_photo_id) return row;
+  const photo = db.prepare('SELECT id, file_path FROM photo WHERE id=?').get(row.evidence_photo_id);
+  return photo ? { ...row, evidence_photo_path: photo.file_path } : row;
+}
+
 /** Recomputes overdue/escalated for one row and persists if changed. Returns the fresh row. */
 function refreshOverdue(row) {
   if (!row) return row;
@@ -55,7 +65,7 @@ router.get(
     if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
     sql += ' ORDER BY due_date IS NULL, due_date, created_at DESC LIMIT 500';
     let rows = db.prepare(sql).all(params);
-    rows = rows.map(refreshOverdue);
+    rows = rows.map(refreshOverdue).map(attachEvidencePhoto);
     if (req.query.overdue !== undefined) {
       const want = req.query.overdue === '1' || req.query.overdue === 'true';
       rows = rows.filter((r) => !!r.overdue === want);
@@ -69,7 +79,7 @@ router.get(
   asyncHandler(async (req, res) => {
     let row = db.prepare('SELECT * FROM action_plan WHERE id=?').get(req.params.id);
     if (!row) return res.status(404).json({ error: 'Not found' });
-    row = refreshOverdue(row);
+    row = attachEvidencePhoto(refreshOverdue(row));
     res.json({ data: row });
   })
 );

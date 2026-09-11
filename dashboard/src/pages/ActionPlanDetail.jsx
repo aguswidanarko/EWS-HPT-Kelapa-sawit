@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { actionPlansApi } from '../api/resources';
+import { actionPlansApi, fileUrl } from '../api/resources';
 import { useMasterData } from '../context/MasterDataContext';
 import { useAuth, canUpdateActionPlan, canVerifyActionPlan } from '../context/AuthContext';
 import { Loading, ErrorBox, Empty, Field } from '../components/Common';
@@ -115,7 +115,18 @@ export default function ActionPlanDetail() {
           )}
 
           <div className="section-title">Bukti</div>
-          <div className="small-muted">{plan.evidence_photo_id ? `Foto #${plan.evidence_photo_id}` : 'Belum ada bukti foto terlampir.'}</div>
+          {/* BRD-11 fix (SIT #34): used to print "Foto #12" as plain text with nothing to click -
+              the API previously never sent back the file_path this needs. Now renders as an
+              actual thumbnail/link once evidence_photo_path is present. */}
+          {plan.evidence_photo_id && plan.evidence_photo_path ? (
+            <a href={fileUrl(plan.evidence_photo_path)} target="_blank" rel="noreferrer">
+              <img src={fileUrl(plan.evidence_photo_path)} alt={`Bukti foto #${plan.evidence_photo_id}`} style={{ maxWidth: 240, borderRadius: 8, display: 'block' }} />
+            </a>
+          ) : plan.evidence_photo_id ? (
+            <div className="small-muted">Foto #{plan.evidence_photo_id} (file tidak ditemukan di server).</div>
+          ) : (
+            <div className="small-muted">Belum ada bukti foto terlampir.</div>
+          )}
         </div>
       </div>
 

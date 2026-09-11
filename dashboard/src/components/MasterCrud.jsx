@@ -6,7 +6,13 @@ import Modal from './Modal';
  * Generic master-data CRUD table.
  * fields: [{ key, label, type: 'text'|'number'|'select'|'date'|'textarea'|'checkbox', options?: [{value,label}], required? }]
  */
-export default function MasterCrud({ title, description, api, fields, columns, canWrite, keyField = 'id', onChanged }) {
+export default function MasterCrud({ title, description, api, fields, columns, canWrite, canDelete, keyField = 'id', onChanged }) {
+  // BRD-10 fix: canDelete defaults to canWrite (unchanged behavior everywhere else), but callers
+  // whose api.remove() is intentionally unsupported (e.g. Scoring Criteria - deleting a criterion
+  // that scoring_entry rows may reference isn't allowed backend-side; the supported path is
+  // Edit > Aktif = Tidak) can pass canDelete={false} to hide the "Hapus" button instead of showing
+  // one that always fails, which SIT logged as "tombol hapus tidak berfungsi".
+  if (canDelete === undefined) canDelete = canWrite;
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,10 +50,27 @@ export default function MasterCrud({ title, description, api, fields, columns, c
     }
   }
 
+  // BRD-05 fix (SIT: field wajib tetap tersimpan kosong / dropdown "-" tetap terkirim). The Save
+  // button lives in <Modal>'s `footer` prop, which renders as a sibling of this <form> - not a
+  // descendant of it - so it never triggers a real form submit event, meaning the `required`
+  // attribute on each <input>/<select>/<textarea> below was never actually enforced by the
+  // browser. Validating explicitly here (rather than restructuring Modal, which is shared by every
+  // other CRUD screen) fixes that without touching unrelated pages.
+  function isEmptyValue(v) {
+    return v === undefined || v === null || v === '' || v === '-';
+  }
+
   async function handleSave(e) {
     e.preventDefault();
-    setSaving(true);
     setFormError(null);
+
+    const missing = fields.filter((f) => f.required && isEmptyValue(editing[f.key]));
+    if (missing.length > 0) {
+      setFormError(`Kolom wajib belum diisi: ${missing.map((f) => f.label).join(', ')}.`);
+      return;
+    }
+
+    setSaving(true);
     try {
       const payload = {};
       fields.forEach((f) => {
@@ -98,7 +121,7 @@ export default function MasterCrud({ title, description, api, fields, columns, c
                   {canWrite && (
                     <td>
                       <button className="btn btn-sm" onClick={() => openEdit(row)}>Edit</button>{' '}
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(row)}>Hapus</button>
+                      {canDelete && <button className="btn btn-sm btn-danger" onClick={() => handleDelete(row)}>Hapus</button>}
                     </td>
                   )}
                 </tr>
@@ -124,14 +147,27 @@ export default function MasterCrud({ title, description, api, fields, columns, c
               <div className="field" key={f.key} style={f.wide ? { gridColumn: '1 / -1' } : undefined}>
                 <label>{f.label}{f.required && ' *'}</label>
                 {f.type === 'select' ? (
-                  <select
-                    required={f.required}
-                    value={editing[f.key] ?? ''}
-                    onChange={(e) => setEditing((v) => ({ ...v, [f.key]: e.target.value }))}
-                  >
-                    <option value="">-</option>
-                    {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  // BRD-14 fix: `options` may now also be a function of the current form state
+                  // (editing) instead of a plain array - lets a caller make e.g. Blok depend on
+                  // whatever Afdeling is currently selected, rather than always rendering every
+                  // row in master data. Plain arrays keep working exactly as before (backward
+                  // compatible with every other MasterCrud usage). This is what fixes Monitoring
+                  // Schedule's "Tambah" freeze: its Blok dropdown used to render all ~18k Blok
+                  // rows unconditionally every time the modal opened.
+                  (() => {
+                    const opts = typeof f.options === 'function' ? f.options(editing) : f.options;
+                    return (
+                      <select
+                        required={f.required}
+                        disabled={f.disabledUntil ? !f.disabledUntil(editing) : false}
+                        value={editing[f.key] ?? ''}
+                        onChange={(e) => setEditing((v) => ({ ...v, [f.key]: e.target.value }))}
+                      >
+                        <option value="">{f.disabledUntil && !f.disabledUntil(editing) ? f.disabledPlaceholder || '-' : '-'}</option>
+                        {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    );
+                  })()
                 ) : f.type === 'textarea' ? (
                   <textarea
                     rows={3}

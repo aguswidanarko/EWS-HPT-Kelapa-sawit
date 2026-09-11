@@ -130,8 +130,16 @@ function CreateModal({ title, api, md, fields, onClose, onCreated }) {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
 
-  const afdelingOptions = form.estate_id ? md.afdelingsByEstate(form.estate_id) : md.afdelings;
-  const blokOptions = form.afdeling_id ? md.bloksByAfdeling(form.afdeling_id) : md.bloks;
+  // BRD-12/BRD-13 fix: with Master Blok now holding ~18k+ rows (V3.2 bulk import), falling back to
+  // the FULL md.afdelings/md.bloks list whenever PT/Afdeling wasn't picked yet rendered a <select>
+  // with thousands of <option> elements - this is what SIT saw as "dropdown Blok tidak berjalan
+  // normal" (the browser visibly stutters/hangs populating it), and very likely why "data tidak
+  // dapat disimpan" was also reported: with the dropdown unusable, users couldn't actually pick a
+  // blok_id, so the (correct) "Blok dan tanggal wajib diisi" validation below kept blocking Simpan.
+  // Fix: never show the unfiltered full list - Afdeling stays empty until PT is chosen, Blok stays
+  // empty until Afdeling is chosen.
+  const afdelingOptions = form.estate_id ? md.afdelingsByEstate(form.estate_id) : [];
+  const blokOptions = form.afdeling_id ? md.bloksByAfdeling(form.afdeling_id) : [];
 
   async function handleSave(e) {
     e.preventDefault();
@@ -189,15 +197,15 @@ function CreateModal({ title, api, md, fields, onClose, onCreated }) {
         </div>
         <div className="field">
           <label>Afdeling</label>
-          <select value={form.afdeling_id} onChange={(e) => setForm((v) => ({ ...v, afdeling_id: e.target.value, blok_id: '' }))}>
-            <option value="">-</option>
+          <select disabled={!form.estate_id} value={form.afdeling_id} onChange={(e) => setForm((v) => ({ ...v, afdeling_id: e.target.value, blok_id: '' }))}>
+            <option value="">{form.estate_id ? '-' : 'Pilih PT terlebih dahulu'}</option>
             {afdelingOptions.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </div>
         <div className="field">
           <label>Blok *</label>
-          <select required value={form.blok_id} onChange={(e) => setForm((v) => ({ ...v, blok_id: e.target.value }))}>
-            <option value="">-</option>
+          <select required disabled={!form.afdeling_id} value={form.blok_id} onChange={(e) => setForm((v) => ({ ...v, blok_id: e.target.value }))}>
+            <option value="">{form.afdeling_id ? '-' : 'Pilih Afdeling terlebih dahulu'}</option>
             {blokOptions.map((b) => <option key={b.id} value={b.id}>{b.code} — {b.name}</option>)}
           </select>
         </div>

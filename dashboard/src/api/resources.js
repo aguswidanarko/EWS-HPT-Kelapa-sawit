@@ -260,6 +260,10 @@ export const usersApi = {
   pic: {
     list: () => unwrap(client.get('/users/pic')),
     create: (d) => client.post('/users/pic', d).then((r) => r.data),
+    // BRD-15 fix (SIT #111): MasterCrud calls api.update() for the "Edit" button on every screen
+    // that uses it - this was missing, so Simpan on an edited PIC Assignment silently failed
+    // (`api.update is not a function`). Backend PUT /users/pic/:id added alongside this.
+    update: (id, d) => client.put(`/users/pic/${id}`, d).then((r) => r.data),
     remove: (id) => client.delete(`/users/pic/${id}`).then((r) => r.data),
   },
 };

@@ -115,9 +115,24 @@ export default function MonitoringSchedule() {
               },
             ]}
             fields={[
+              // BRD-14 fix: Afdeling/Blok used to always list every row in master data
+              // (~350 Afdeling / ~18.7k Blok after the V3.2 bulk import) regardless of which PT
+              // was picked - rendering that many <option> elements is what froze the page when
+              // "Tambah" was clicked. Now scoped to the currently selected parent (see MasterCrud's
+              // function-options + disabledUntil support).
               { key: 'estate_id', label: 'PT', type: 'select', required: true, options: md.estates.map((e) => ({ value: e.id, label: e.name })) },
-              { key: 'afdeling_id', label: 'Afdeling', type: 'select', required: true, options: md.afdelings.map((a) => ({ value: a.id, label: a.name })) },
-              { key: 'blok_id', label: 'Blok', type: 'select', required: true, options: md.bloks.map((b) => ({ value: b.id, label: `${b.code} — ${b.name}` })) },
+              {
+                key: 'afdeling_id', label: 'Afdeling', type: 'select', required: true,
+                options: (row) => (row?.estate_id ? md.afdelingsByEstate(row.estate_id).map((a) => ({ value: a.id, label: a.name })) : []),
+                disabledUntil: (row) => !!row?.estate_id,
+                disabledPlaceholder: 'Pilih PT terlebih dahulu',
+              },
+              {
+                key: 'blok_id', label: 'Blok', type: 'select', required: true,
+                options: (row) => (row?.afdeling_id ? md.bloksByAfdeling(row.afdeling_id).map((b) => ({ value: b.id, label: `${b.code} — ${b.name}` })) : []),
+                disabledUntil: (row) => !!row?.afdeling_id,
+                disabledPlaceholder: 'Pilih Afdeling terlebih dahulu',
+              },
               { key: 'jenis_kegiatan', label: 'Jenis Kegiatan', type: 'select', required: true, options: JENIS_KEGIATAN.map((j) => ({ value: j, label: j })) },
               { key: 'hpt_id', label: 'Indikator (HPT/Yield Making/dst)', type: 'select', options: md.hpt.map((h) => ({ value: h.id, label: `${h.name} (${h.indicator_type || 'HPT'})` })) },
               { key: 'user_id', label: 'PIC (User)', type: 'select', options: md.users.map((u) => ({ value: u.id, label: u.name })) },

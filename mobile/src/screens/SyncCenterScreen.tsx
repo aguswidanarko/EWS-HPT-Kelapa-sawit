@@ -198,6 +198,13 @@ export default function SyncCenterScreen() {
       </View>
 
       <FlatList
+        // BRD-04 fix: ScreenContainer's scroll={false} leaves this FlatList as a plain child of a
+        // flex-column View, with no explicit flex/height of its own - React Native then sizes it
+        // to its natural content height instead of filling the remaining screen, which is what SIT
+        // saw as "only a small area scrolls, the rest of the page doesn't move". flex: 1 makes it
+        // take all the vertical space left after the summary section above, so the FlatList itself
+        // scrolls the full list normally.
+        style={styles.flatList}
         data={pendingItems}
         keyExtractor={(it) => `${it.kind}-${it.local_id}`}
         contentContainerStyle={styles.listContent}
@@ -226,6 +233,7 @@ export default function SyncCenterScreen() {
 }
 
 const styles = StyleSheet.create({
+  flatList: { flex: 1 },
   summaryHeadline: { fontSize: 16, fontWeight: '800', color: colors.text },
   summaryBreakdown: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
   lastSync: { fontSize: 11, color: colors.textMuted, marginTop: 8 },

@@ -156,7 +156,14 @@ export default function SensusOryctesScreen({ navigation }: Props) {
 
   const handleSubmit = () => {
     if (!blok || !hpt) return Alert.alert('Lengkapi data', 'Blok wajib dipilih.');
-    if (rows.length === 0) return Alert.alert('Tidak ada baris sampel', 'Blok ini belum memiliki parameter sampling yang valid.');
+    if (rows.length === 0) {
+      // BRD-03: see SensusTikusScreen.tsx for the root cause (blok.jumlah_baris empty for every
+      // bulk-imported Blok, since Master Blok Upload's source file has no such column).
+      const reason = !blok.jumlah_baris
+        ? `Data "Jumlah Baris" untuk Blok ${blok.code} belum diisi di Master Data. Sensus baris sampel tidak bisa dilakukan sampai admin melengkapi data ini lewat Dashboard > Master Data > Blok.`
+        : 'Blok ini belum memiliki parameter sampling yang valid. Hubungi admin.';
+      return Alert.alert('Tidak ada baris sampel', reason);
+    }
     if (totals.diamati <= 0) return Alert.alert('Lengkapi data', 'Isi jumlah sampel minimal pada satu baris.');
     const warning = checkLocationWarning(blok, gps.gps_lat, gps.gps_lng);
     if (warning === true) return setShowOutOfArea(true);

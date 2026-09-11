@@ -49,9 +49,22 @@ export default function PicUser() {
           ]}
           fields={[
             { key: 'user_id', label: 'User', type: 'select', required: true, options: md.users.map((u) => ({ value: u.id, label: `${u.name} (${u.role_code})` })) },
+            // BRD-15 fix: Afdeling/Blok used to always list every row in master data
+            // (~350 Afdeling / ~18.7k Blok) regardless of PT/Afdeling chosen - same freeze/overflow
+            // risk fixed for Monitoring Schedule (BRD-14) and Yield Making (BRD-12/13). Since these
+            // three are optional ("kosongkan = semua"), they stay enabled even without a parent
+            // selected, just scoped once one is picked.
             { key: 'estate_id', label: 'PT (kosongkan = semua)', type: 'select', options: md.estates.map((e) => ({ value: e.id, label: e.name })) },
-            { key: 'afdeling_id', label: 'Afdeling (kosongkan = semua)', type: 'select', options: md.afdelings.map((a) => ({ value: a.id, label: a.name })) },
-            { key: 'blok_id', label: 'Blok (kosongkan = semua)', type: 'select', options: md.bloks.map((b) => ({ value: b.id, label: `${b.code} — ${b.name}` })) },
+            {
+              key: 'afdeling_id', label: 'Afdeling (kosongkan = semua)', type: 'select',
+              options: (row) => (row?.estate_id ? md.afdelingsByEstate(row.estate_id) : md.afdelings).map((a) => ({ value: a.id, label: a.name })),
+            },
+            {
+              key: 'blok_id', label: 'Blok (kosongkan = semua)', type: 'select',
+              options: (row) => (row?.afdeling_id ? md.bloksByAfdeling(row.afdeling_id) : []).map((b) => ({ value: b.id, label: `${b.code} — ${b.name}` })),
+              disabledUntil: (row) => !!row?.afdeling_id,
+              disabledPlaceholder: 'Pilih Afdeling dulu (atau kosongkan = semua)',
+            },
             { key: 'jenis_aktivitas', label: 'Jenis Aktivitas', type: 'select', options: [
               { value: 'ALL', label: 'Semua' }, { value: 'DETEKSI', label: 'Deteksi' }, { value: 'SENSUS', label: 'Sensus' }, { value: 'PENGENDALIAN', label: 'Pengendalian' },
             ] },
@@ -103,10 +116,19 @@ function UsersTab({ canWrite, md }) {
       alert(err?.response?.data?.error || 'Gagal.');
     }
   }
+  // BRD-07 fix (SIT #102): phone accepted any character, including letters/symbols that aren't a
+  // valid phone number, with no validation anywhere. Permissive but real: digits plus +, spaces,
+  // dashes and parens (covers "0812-3456-7890", "+62 812 3456 7890", etc.), 8-20 chars long.
+  const PHONE_PATTERN = /^[0-9+\-\s()]{8,20}$/;
+
   async function handleSave(e) {
     e.preventDefault();
-    setSaving(true);
     setFormError(null);
+    if (editing.phone && !PHONE_PATTERN.test(editing.phone)) {
+      setFormError('Format nomor telepon tidak valid. Gunakan angka, spasi, tanda "+", "-", atau "()" saja (8-20 karakter).');
+      return;
+    }
+    setSaving(true);
     try {
       if (editing.id) {
         const payload = { name: editing.name, phone: editing.phone, estate_id: editing.estate_id || null, afdeling_id: editing.afdeling_id || null, area_kerja: editing.area_kerja, is_active: editing.is_active ? 1 : 0, role_code: editing.role_code };

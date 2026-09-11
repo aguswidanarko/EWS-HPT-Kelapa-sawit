@@ -132,6 +132,13 @@ export default function ImportData() {
       </div>
 
       <div className="card card-pad" style={{ marginBottom: 18 }}>
+        {/* BRD-16 (SIT #49): every entity tab shares the same layout by design (identical
+            preview->commit flow) - that's consistent UX, not a bug, but testers noted it was hard
+            to tell at a glance which category's rules were in effect. Make the active category
+            explicit here rather than only in the tab button and template filename. */}
+        <div className="small-muted" style={{ marginBottom: 10 }}>
+          Kategori aktif: <strong>{ENTITIES.find((e) => e.key === entity)?.label}</strong> — unduh template di bawah untuk melihat kolom yang wajib diisi untuk kategori ini.
+        </div>
         <div className="toolbar">
           <button className="btn" onClick={downloadTemplate}>⬇ Download Template ({ENTITIES.find((e) => e.key === entity)?.label})</button>
           <input type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files[0])} />

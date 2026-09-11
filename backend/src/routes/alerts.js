@@ -59,7 +59,24 @@ router.get(
     if (alert.source_type === 'DETECTION') source = db.prepare('SELECT * FROM detection WHERE id=?').get(alert.source_id);
     if (alert.source_type === 'SENSUS') source = db.prepare('SELECT * FROM sensus WHERE id=?').get(alert.source_id);
     if (alert.source_type === 'MORTALITY') source = db.prepare('SELECT * FROM mortality WHERE id=?').get(alert.source_id);
-    const photos = source ? db.prepare('SELECT * FROM photo WHERE entity_type=? AND entity_id=?').all(alert.source_type, source.id) : [];
+    let photos = source ? db.prepare('SELECT * FROM photo WHERE entity_type=? AND entity_id=?').all(alert.source_type, source.id) : [];
+    // BRD-11 fix (SIT #5): alerts whose source_type is 'ASSESSMENT' (the V3.1 Universal Assessment
+    // Form - now the primary entry point for most EWS indicators, see AssessmentScreen.tsx) never
+    // matched any of the three branches above, so `photos` stayed [] even when the field officer
+    // did attach a tree photo. Assessment deliberately has no single source_id to look up (one
+    // visit fans out into many alerts across many indicators - see assessmentEngine.js's header
+    // comment) - instead each assessment_tree row carries its own foto_id directly, and
+    // calculation_result links assessment_id <-> alert_id, so that's the path back to the photos.
+    if (photos.length === 0 && alert.source_type === 'ASSESSMENT') {
+      photos = db
+        .prepare(
+          `SELECT p.* FROM photo p
+           JOIN assessment_tree at ON at.foto_id = p.id
+           JOIN calculation_result cr ON cr.assessment_id = at.assessment_id
+           WHERE cr.alert_id = ?`
+        )
+        .all(alert.id);
+    }
     res.json({ data: { ...alert, notifications, source, photos } });
   })
 );

@@ -37,11 +37,23 @@ export default function KnowledgeBase() {
   }, [rows, kategoriFilter]);
 
   async function handleDownload(row) {
+    // BRD-09 fix (SIT #48): window.open(blobUrl, '_blank') just opens the file in a new tab, and
+    // for types the browser can render itself (PDF, images, etc.) that's a VIEWER, not a download -
+    // the browser has no signal this should be saved rather than displayed. A temporary <a> with a
+    // `download` attribute is what actually tells the browser to save the file.
     setDownloading(row.id);
     try {
       const res = await client.get(`/knowledge-base/${row.id}/file`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(res.data);
-      window.open(url, '_blank');
+      const ext = row.file_type ? `.${row.file_type}`.replace(/\.\.+/, '.') : '';
+      const filename = `${(row.judul || 'dokumen').replace(/[\\/:*?"<>|]+/g, '_')}${ext}`;
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       alert('Gagal mengunduh file: ' + (err?.response?.data?.error || err.message));
     } finally {

@@ -190,7 +190,14 @@ export default function SensusRayapScreen({ navigation }: Props) {
 
   const handleSubmit = () => {
     if (!blok || !hpt) return Alert.alert('Lengkapi data', 'Blok wajib dipilih.');
-    if (points.length === 0) return Alert.alert('Tidak ada titik grid', 'Blok ini belum memiliki parameter sampling grid yang valid.');
+    if (points.length === 0) {
+      // BRD-03: same root cause as SensusTikusScreen.tsx's baris sampel (blok.jumlah_baris empty
+      // for every bulk-imported Blok - generateGrid() also needs it), just for the GRID method.
+      const reason = !blok.jumlah_baris
+        ? `Data "Jumlah Baris" untuk Blok ${blok.code} belum diisi di Master Data. Sensus grid tidak bisa dilakukan sampai admin melengkapi data ini lewat Dashboard > Master Data > Blok.`
+        : 'Blok ini belum memiliki parameter sampling grid yang valid. Hubungi admin.';
+      return Alert.alert('Tidak ada titik grid', reason);
+    }
     const warning = checkLocationWarning(blok, sessionGps.gps_lat, sessionGps.gps_lng);
     if (warning === true) return setShowOutOfArea(true);
     doSave(false);

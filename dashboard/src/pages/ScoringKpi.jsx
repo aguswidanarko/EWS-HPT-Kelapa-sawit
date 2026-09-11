@@ -47,6 +47,10 @@ function KriteriaTab({ user }) {
       title="Scoring Criteria (Placeholder)"
       description="side: RND | TIM_OPERASIONAL | BONUS — target bentuk akhir 5 RND @poin + 5 TIM_OPERASIONAL @poin + BONUS maks 10 (SPEC_V2.md section 2), belum diisi kriteria asli."
       canWrite={canManageScoringCriteria(user)}
+      // BRD-10 fix: backend doesn't support deleting a scoring criterion (scoring_entry rows may
+      // reference it) - api.remove below always rejects. Hide "Hapus" instead of showing a button
+      // that can never succeed; the supported way to retire a criterion is Edit > Aktif = Tidak.
+      canDelete={false}
       api={{
         list: () => scoringApi.criteria.list().then((r) => r.data),
         create: scoringApi.criteria.create,
